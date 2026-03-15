@@ -1,0 +1,12 @@
+{
+  "name": "real-bug-report",
+  "description": "A well-written bug report with reproduction steps, version info, and expected vs actual behavior",
+  "expected_verdict": "clean",
+  "expected_signals": [],
+  "issue": {
+    "title": "Login returns 500 when email contains a plus sign",
+    "labels": ["bug"],
+    "body": "## Description\n\nThe login endpoint returns a 500 Internal Server Error when the user's email address contains a `+` character (e.g., `john+test@gmail.com`). The same email works fine during registration.\n\n## Version\n\n- App version: 2.4.1\n- Node.js: 20.11.0\n- OS: Ubuntu 22.04\n\n## Steps to reproduce\n\n1. Open the app at `http://localhost:3000`\n2. Register a new account with email `testuser+bug@gmail.com` and password `Test1234!`\n3. Registration succeeds and redirects to dashboard\n4. Log out\n5. Try to log in with the same email `testuser+bug@gmail.com` and password `Test1234!`\n6. See 500 error\n\n## Expected behavior\n\nLogin should succeed and redirect to the dashboard, just like it does for emails without a `+` sign.\n\n## Actual behavior\n\nThe server returns a 500 error. The browser console shows:\n\n```\nPOST http://localhost:3000/api/login 500 (Internal Server Error)\n```\n\nServer logs show:\n\n```\nError: Invalid email format\n    at validateEmail (src/utils/validation.ts:15:11)\n    at AuthService.login (src/services/auth-service.ts:23:5)\n```\n\n## Additional context\n\nI suspect the email validation regex doesn't account for the `+` character. The RFC 5321 spec allows it in the local part of an email address.",
+    "author": "careful-reporter"
+  }
+}

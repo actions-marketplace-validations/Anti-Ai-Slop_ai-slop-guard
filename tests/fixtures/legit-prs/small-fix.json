@@ -1,0 +1,14 @@
+{
+  "name": "small-fix",
+  "description": "A small focused bug fix with descriptive commit message and issue reference",
+  "expected_verdict": "clean",
+  "expected_signals": [],
+  "pr": {
+    "title": "Fix null user crash in login flow",
+    "body": "Fixes #42.\n\nWhen a user account is deleted but their session cookie persists, the login flow crashes with `TypeError: Cannot read properties of null (reading 'id')` because `findByEmail` returns null and we weren't checking for it.\n\nThis adds a null check before accessing user properties and returns a proper 401 response instead of crashing.",
+    "commits": [
+      { "sha": "d4d4d4d", "message": "fix: handle null user in login flow", "author": "bob" }
+    ]
+  },
+  "diff": "diff --git a/src/routes/login.ts b/src/routes/login.ts\nindex 5555555..6666666 100644\n--- a/src/routes/login.ts\n+++ b/src/routes/login.ts\n@@ -8,7 +8,13 @@ router.post('/login', async (req: Request, res: Response) => {\n   const { email, password } = req.body;\n \n   const user = await userRepo.findByEmail(email);\n-  const isValid = await compare(password, user.passwordHash);\n+\n+  if (!user) {\n+    res.status(401).json({ error: 'Invalid credentials' });\n+    return;\n+  }\n+\n+  const isValid = await compare(password, user.passwordHash);\n \n   if (!isValid) {\n     res.status(401).json({ error: 'Invalid credentials' });\ndiff --git a/tests/routes/login.test.ts b/tests/routes/login.test.ts\nindex 7777777..8888888 100644\n--- a/tests/routes/login.test.ts\n+++ b/tests/routes/login.test.ts\n@@ -22,4 +22,12 @@ describe('POST /login', () => {\n     expect(res.status).toBe(401);\n   });\n \n+  it('returns 401 for deleted user account', async () => {\n+    const res = await request(app)\n+      .post('/login')\n+      .send({ email: 'deleted@example.com', password: 'any' });\n+\n+    expect(res.status).toBe(401);\n+    expect(res.body.error).toBe('Invalid credentials');\n+  });\n });\n"
+}

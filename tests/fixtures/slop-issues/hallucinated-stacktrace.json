@@ -1,0 +1,13 @@
+{
+  "name": "hallucinated-stacktrace",
+  "description": "Issue with a Python stack trace referencing files that do not exist in the repository",
+  "expected_verdict": "likely-slop",
+  "expected_signals": ["hallucinated-file"],
+  "repo_files": ["src/app.py", "src/utils.py", "src/models/user.py", "src/routes/api.py", "tests/test_app.py"],
+  "issue": {
+    "title": "TypeError when accessing /api/users endpoint",
+    "labels": ["bug"],
+    "body": "I'm getting this error when I try to access the users endpoint:\n\n```\nTraceback (most recent call last):\n  File \"src/middleware/authentication.py\", line 45, in verify_token\n    payload = jwt.decode(token, SECRET_KEY, algorithms=[\"HS256\"])\n  File \"src/services/user_manager.py\", line 112, in get_active_users\n    users = self.repository.fetch_all(status=\"active\")\n  File \"src/database/connection_pool.py\", line 78, in execute_query\n    cursor.execute(query, params)\n  File \"src/handlers/response_formatter.py\", line 23, in format_response\n    return jsonify({\"data\": serialize(result)})\nTypeError: Object of type 'datetime' is not JSON serializable\n```\n\nThis happens every time I call the API. Please fix ASAP.",
+    "author": "random-user-2024"
+  }
+}

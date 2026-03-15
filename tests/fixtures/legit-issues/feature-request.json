@@ -1,0 +1,12 @@
+{
+  "name": "feature-request",
+  "description": "A clear feature request with description of what and why",
+  "expected_verdict": "clean",
+  "expected_signals": [],
+  "issue": {
+    "title": "Add dark mode support",
+    "labels": ["enhancement", "feature-request"],
+    "body": "## What\n\nAdd a dark mode toggle to the app settings page that switches the entire UI to a dark color scheme.\n\n## Why\n\nI use this app mainly in the evenings and the bright white background causes eye strain. Several users in the Discord have mentioned the same thing (see messages from last week in #feedback).\n\nMost modern apps support dark mode, and Tailwind CSS already makes it straightforward with the `dark:` variant.\n\n## Suggested approach\n\n- Add a theme toggle in the settings dropdown (options: Light / Dark / System)\n- Store the preference in localStorage\n- Use Tailwind's `darkMode: 'class'` strategy\n- Default to system preference on first visit\n\nI'm happy to submit a PR for this if the maintainers agree with the approach.",
+    "author": "helpful-contributor"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "ai-description-fluff",
+  "description": "PR with AI-style description full of fluff words, self-praise, and no explanation of why",
+  "expected_verdict": "suspicious",
+  "expected_signals": ["ai-fluff-language", "missing-why", "self-praise"],
+  "pr": {
+    "title": "This PR enhances the authentication system",
+    "body": "## Summary\n\nThis comprehensive pull request introduces a robust and streamlined authentication module that leverages industry-standard best practices for seamless user management. The implementation provides an elegant solution for handling JWT tokens with a holistic approach to session lifecycle management.\n\nBy utilizing cutting-edge patterns, this clean implementation ensures a scalable and maintainable codebase. The authentication flow has been meticulously crafted to deliver a superior developer experience.\n\n## Changes\n\n- Added comprehensive token validation layer\n- Implemented robust session management\n- Streamlined the login flow for optimal performance\n- Leveraging middleware patterns for seamless integration\n- Enhanced error handling with elegant fallback mechanisms",
+    "commits": [
+      { "sha": "f1a2b3c", "message": "feat: add auth module", "author": "contributor42" },
+      { "sha": "d4e5f6a", "message": "feat: add session handling", "author": "contributor42" }
+    ]
+  },
+  "diff": "diff --git a/src/auth/token.ts b/src/auth/token.ts\nindex 0000000..1111111 100644\n--- /dev/null\n+++ b/src/auth/token.ts\n@@ -0,0 +1,18 @@\n+import { sign, verify } from 'jsonwebtoken';\n+\n+const SECRET = process.env.JWT_SECRET ?? 'dev-secret';\n+\n+export function createToken(userId: string): string {\n+  return sign({ sub: userId }, SECRET, { expiresIn: '1h' });\n+}\n+\n+export function validateToken(token: string): { sub: string } | null {\n+  try {\n+    return verify(token, SECRET) as { sub: string };\n+  } catch {\n+    return null;\n+  }\n+}\n+\n+export function refreshToken(token: string): string | null {\n+  const payload = validateToken(token);\n+  return payload ? createToken(payload.sub) : null;\n+}\n"
+}

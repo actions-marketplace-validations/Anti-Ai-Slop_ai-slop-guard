@@ -1,0 +1,12 @@
+{
+  "name": "no-repro-steps",
+  "description": "Bug report without any reproduction steps",
+  "expected_verdict": "suspicious",
+  "expected_signals": ["no-reproduction-steps"],
+  "issue": {
+    "title": "App crashes when I open it",
+    "labels": ["bug"],
+    "body": "App crashes when I open it. It just shows a white screen and then closes. I tried reinstalling but it didn't help. This is really frustrating. Can someone fix this?",
+    "author": "frustrated-user"
+  }
+}

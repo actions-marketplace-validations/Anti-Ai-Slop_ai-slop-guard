@@ -1,0 +1,120 @@
+diff --git a/src/services/auth-service.ts b/src/services/auth-service.ts
+index 1a2b3c4..5d6e7f8 100644
+--- a/src/services/auth-service.ts
++++ b/src/services/auth-service.ts
+@@ -1,6 +1,8 @@
+ import { hash, compare } from 'bcrypt';
+ import { sign, verify } from 'jsonwebtoken';
+ import { UserRepository } from '../repositories/user-repository';
++import { RateLimiter } from '../utils/rate-limiter';
++import { AuditLog } from '../models/audit-log';
+
+ const SALT_ROUNDS = 12;
+ const JWT_SECRET = process.env.JWT_SECRET ?? 'fallback-secret';
+@@ -12,6 +14,8 @@ export class AuthService {
+
+   constructor(userRepo: UserRepository) {
+     this.userRepo = userRepo;
++    this.rateLimiter = new RateLimiter({ maxAttempts: 5, windowMs: 900000 });
++    this.auditLog = new AuditLog();
+   }
+
+   async login(email: string, password: string): Promise<LoginResult> {
+@@ -25,6 +29,42 @@ export class AuthService {
+     return { token, expiresIn: TOKEN_EXPIRY };
+   }
+
++  /**
++   * Validates a login attempt against rate limiting rules.
++   * Returns false if the account is temporarily locked due to
++   * too many failed attempts within the time window.
++   */
++  async validateLoginAttempt(email: string): Promise<boolean> {
++    const key = `login:${email}`;
++    const attempts = await this.rateLimiter.getAttempts(key);
++
++    if (attempts >= this.rateLimiter.maxAttempts) {
++      await this.auditLog.record({
++        event: 'LOGIN_BLOCKED',
++        email,
++        reason: 'rate_limit_exceeded',
++        timestamp: new Date(),
++      });
++      return false;
++    }
++
++    return true;
++  }
++
++  /**
++   * Records a failed login attempt and increments the rate limiter counter.
++   */
++  async recordFailedAttempt(email: string): Promise<void> {
++    const key = `login:${email}`;
++    await this.rateLimiter.increment(key);
++
++    const attempts = await this.rateLimiter.getAttempts(key);
++    await this.auditLog.record({
++      event: 'LOGIN_FAILED',
++      email,
++      attemptNumber: attempts,
++      timestamp: new Date(),
++    });
++  }
++
+   async verifyToken(token: string): Promise<TokenPayload | null> {
+     try {
+       return verify(token, JWT_SECRET) as TokenPayload;
+diff --git a/tests/services/auth-service.test.ts b/tests/services/auth-service.test.ts
+index 9a0b1c2..3d4e5f6 100644
+--- a/tests/services/auth-service.test.ts
++++ b/tests/services/auth-service.test.ts
+@@ -1,6 +1,7 @@
+ import { describe, it, expect, beforeEach, vi } from 'vitest';
+ import { AuthService } from '../../src/services/auth-service';
+ import { UserRepository } from '../../src/repositories/user-repository';
++import { RateLimiter } from '../../src/utils/rate-limiter';
+
+ describe('AuthService', () => {
+   let authService: AuthService;
+@@ -30,4 +31,38 @@ describe('AuthService', () => {
+     expect(result).toBeNull();
+   });
+
++  describe('validateLoginAttempt', () => {
++    it('should allow login when under rate limit', async () => {
++      const result = await authService.validateLoginAttempt('user@test.com');
++      expect(result).toBe(true);
++    });
++
++    it('should block login when rate limit exceeded', async () => {
++      // Simulate 5 failed attempts
++      for (let i = 0; i < 5; i++) {
++        await authService.recordFailedAttempt('user@test.com');
++      }
++
++      const result = await authService.validateLoginAttempt('user@test.com');
++      expect(result).toBe(false);
++    });
++  });
++
++  describe('recordFailedAttempt', () => {
++    it('should increment the attempt counter', async () => {
++      await authService.recordFailedAttempt('user@test.com');
++
++      const limiter = authService['rateLimiter'] as RateLimiter;
++      const attempts = await limiter.getAttempts('login:user@test.com');
++      expect(attempts).toBe(1);
++    });
++
++    it('should record audit log entry', async () => {
++      const auditSpy = vi.spyOn(authService['auditLog'], 'record');
++      await authService.recordFailedAttempt('blocked@test.com');
++
++      expect(auditSpy).toHaveBeenCalledWith(
++        expect.objectContaining({ event: 'LOGIN_FAILED', email: 'blocked@test.com' })
++      );
++    });
++  });
++
+ });

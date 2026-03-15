@@ -1,0 +1,51 @@
+diff --git a/src/controllers/user-controller.ts b/src/controllers/user-controller.ts
+index 3a1b2c3..4d5e6f7 100644
+--- a/src/controllers/user-controller.ts
++++ b/src/controllers/user-controller.ts
+@@ -1,25 +1,25 @@
+-	import { Request, Response } from 'express';
+-	import { UserService } from '../services/user-service';
++  import { Request, Response } from 'express';
++  import { UserService } from '../services/user-service';
+
+-	export class UserController {
+-		private userService: UserService;
++  export class UserController {
++    private userService: UserService;
+
+-		constructor() {
+-			this.userService = new UserService();
+-		}
++    constructor() {
++      this.userService = new UserService();
++    }
+
+-		async getUser(req: Request, res: Response): Promise<void> {
+-			const userId = req.params.id;
+-			const user = await this.userService.findById(userId);
+-			if (!user) {
+-				res.status(404).json({ error: 'User not found' });
+-				return;
+-			}
+-			res.json(user);
+-		}
++    async getUser(req: Request, res: Response): Promise<void> {
++      const userId = req.params.id;
++      const user = await this.userService.findById(userId);
++      if (!user) {
++        res.status(404).json({ error: 'User not found' });
++        return;
++      }
++      res.json(user);
++    }
+
+-		async listUsers(_req: Request, res: Response): Promise<void> {
+-			const users = await this.userService.findAll();
+-			res.json(users);
+-		}
+-	}
++    async listUsers(_req: Request, res: Response): Promise<void> {
++      const users = await this.userService.findAll();
++      res.json(users);
++    }
++  }

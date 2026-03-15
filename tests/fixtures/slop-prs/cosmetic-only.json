@@ -1,0 +1,12 @@
+{
+  "name": "cosmetic-only-whitespace",
+  "description": "PR that only changes indentation",
+  "expected_verdict": "suspicious",
+  "expected_signals": ["cosmetic-only-diff"],
+  "pr": {
+    "title": "Fix formatting",
+    "body": "This PR fixes the indentation in the main file.",
+    "commits": [{ "sha": "abc123", "message": "fix formatting", "author": "user1" }]
+  },
+  "diff": "diff --git a/src/app.ts b/src/app.ts\nindex abc..def 100644\n--- a/src/app.ts\n+++ b/src/app.ts\n@@ -1,4 +1,4 @@\n-  const x = 1;\n+    const x = 1;\n-  const y = 2;\n+    const y = 2;\n"
+}

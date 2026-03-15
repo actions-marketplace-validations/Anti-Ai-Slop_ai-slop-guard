@@ -1,0 +1,12 @@
+{
+  "name": "overly-formal-issue",
+  "description": "Issue written in an overly formal, AI-generated style with excessive fluff words",
+  "expected_verdict": "suspicious",
+  "expected_signals": ["overly-formal-issue"],
+  "issue": {
+    "title": "Comprehensive Enhancement Proposal for Authentication Module",
+    "labels": ["enhancement"],
+    "body": "Dear Maintainers,\n\nI would like to bring to your attention a comprehensive observation regarding the authentication module that I believe is of paramount importance to the overall robustness of this project.\n\nThe current implementation, while functional, could greatly benefit from a more streamlined approach to token validation. Furthermore, leveraging industry-standard practices would enhance the security posture significantly.\n\nIt is pivotal that we consider implementing a seamless integration with OAuth 2.0 providers. Moreover, the existing session management could be made more robust through the adoption of refresh token rotation.\n\nThe aforementioned enhancements would provide a holistic improvement to the user authentication experience. Additionally, implementing these changes would ensure the long-term scalability and maintainability of the codebase.\n\nI trust that the maintainers will give this proposal due consideration, as the implications for the project's trajectory are quite significant.\n\nThank you for your time and dedication to this remarkable project.",
+    "author": "polite-ai-user"
+  }
+}

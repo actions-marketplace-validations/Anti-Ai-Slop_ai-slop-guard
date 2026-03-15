@@ -1,0 +1,14 @@
+{
+  "name": "import-spam",
+  "description": "PR that adds 8 imports but only uses 2 lines of non-import code",
+  "expected_verdict": "suspicious",
+  "expected_signals": ["import-tsunami"],
+  "pr": {
+    "title": "Set up utility helpers",
+    "body": "Adding utility imports and a small helper function.",
+    "commits": [
+      { "sha": "c3d4e5f", "message": "feat: add utility helpers", "author": "user99" }
+    ]
+  },
+  "diff": "diff --git a/src/utils/helpers.ts b/src/utils/helpers.ts\nnew file mode 100644\nindex 0000000..aabbccd\n--- /dev/null\n+++ b/src/utils/helpers.ts\n@@ -0,0 +1,14 @@\n+import { cloneDeep } from 'lodash';\n+import { format, parseISO } from 'date-fns';\n+import { v4 as uuidv4 } from 'uuid';\n+import { createHash } from 'crypto';\n+import { join, resolve } from 'path';\n+import { readFileSync, writeFileSync } from 'fs';\n+import { EventEmitter } from 'events';\n+import { Readable } from 'stream';\n+\n+export function formatDate(iso: string): string {\n+  return format(parseISO(iso), 'yyyy-MM-dd');\n+}\n"
+}
