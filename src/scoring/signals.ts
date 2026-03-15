@@ -221,6 +221,36 @@ export const SIGNALS = {
     'Similar to an existing issue (fuzzy match >85%)',
   ),
 
+  // ── PR — Metadata ──────────────────────────────────────────────────
+  BLOCKED_SOURCE_BRANCH: def(
+    'blocked-source-branch',
+    'metadata',
+    4,
+    'Blocked source branch',
+    'PR was opened from a blocked branch (e.g. main, master)',
+  ),
+  HONEYPOT_TRIGGERED: def(
+    'honeypot-triggered',
+    'metadata',
+    5,
+    'Honeypot triggered',
+    'PR body contains a hidden honeypot term from the PR template',
+  ),
+  COMMUNITY_FLAGGED: def(
+    'community-flagged',
+    'metadata',
+    3,
+    'Community flagged',
+    'PR received excessive negative reactions from the community',
+  ),
+  LANGUAGE_MISMATCH: def(
+    'language-mismatch',
+    'metadata',
+    3,
+    'Language mismatch',
+    'Most added files use a language foreign to this repository',
+  ),
+
   // ── Semantic (optional, LLM) ─────────────────────────────────────────
   NO_FUNCTIONAL_VALUE: def(
     'no-functional-value',

@@ -18,6 +18,7 @@ export type SignalCategory =
   | 'diff-quality'
   | 'description'
   | 'commits'
+  | 'metadata'
   | 'stacktrace'
   | 'duplicate'
   | 'semantic';
@@ -166,6 +167,13 @@ export interface GuardConfig {
   readonly llm: LLMConfig;
   readonly exemptUsers: readonly string[];
   readonly exemptLabels: readonly string[];
+  readonly blockedSourceBranches: readonly string[];
+  readonly honeypotTerms: readonly string[];
+  readonly maxNegativeReactions: number;
+  readonly checkLanguageMismatch: boolean;
+  readonly contributorHistoryCheck: boolean;
+  readonly newContributorWeightMultiplier: number;
+  readonly gracePeriodHours: number;
 }
 
 // ---------------------------------------------------------------------------

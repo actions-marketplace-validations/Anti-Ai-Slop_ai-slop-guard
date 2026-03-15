@@ -53,6 +53,14 @@ const SUGGESTIONS: Readonly<Record<string, string>> = {
     'Search existing issues before opening a new one.',
   'no-functional-value':
     'Explain the functional value this change adds.',
+  'blocked-source-branch':
+    'Create a feature branch instead of opening PRs from main/master.',
+  'honeypot-triggered':
+    'Your PR description contains a term that suggests automated generation.',
+  'community-flagged':
+    'This PR has received negative feedback from the community — please review the concerns.',
+  'language-mismatch':
+    'Most files in this PR use a language uncommon in this repository — verify this is intentional.',
 };
 
 /**

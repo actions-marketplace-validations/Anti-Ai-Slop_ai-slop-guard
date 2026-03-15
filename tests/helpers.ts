@@ -34,6 +34,13 @@ export function createDefaultConfig(
     } as LLMConfig,
     exemptUsers: [],
     exemptLabels: ['human-verified'],
+    blockedSourceBranches: ['main', 'master'],
+    honeypotTerms: [],
+    maxNegativeReactions: 3,
+    checkLanguageMismatch: true,
+    contributorHistoryCheck: true,
+    newContributorWeightMultiplier: 1.5,
+    gracePeriodHours: 0,
     ...overrides,
   };
 }

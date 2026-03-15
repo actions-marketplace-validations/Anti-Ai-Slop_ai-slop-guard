@@ -87,6 +87,34 @@ inputs:
     description: 'Comma-separated list of exempt labels'
     required: false
     default: 'human-verified'
+  blocked-source-branches:
+    description: 'Comma-separated list of blocked source branches for PRs (e.g. main,master)'
+    required: false
+    default: 'main,master'
+  honeypot-terms:
+    description: 'Comma-separated honeypot words to detect in PR body (hidden in PR template HTML comments)'
+    required: false
+    default: ''
+  max-negative-reactions:
+    description: 'Threshold for negative reactions (thumbs_down + confused). 0 disables check.'
+    required: false
+    default: '3'
+  check-language-mismatch:
+    description: 'Detect PRs adding files in a language foreign to the repository'
+    required: false
+    default: 'true'
+  contributor-history-check:
+    description: 'Apply stricter thresholds for new contributors with no merged PRs'
+    required: false
+    default: 'true'
+  new-contributor-weight-multiplier:
+    description: 'Score multiplier for new contributors (0 merged PRs)'
+    required: false
+    default: '1.5'
+  grace-period-hours:
+    description: 'Hours to wait before auto-closing (0 = close immediately)'
+    required: false
+    default: '0'
 
 outputs:
   slop-score:

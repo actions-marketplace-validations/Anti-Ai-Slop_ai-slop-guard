@@ -91,6 +91,24 @@ export function resolveConfig(): Result<GuardConfig, string> {
     llm: llmConfig,
     exemptUsers: parseCommaSeparated(core.getInput('exempt-users')),
     exemptLabels: parseCommaSeparated(core.getInput('exempt-labels')),
+    blockedSourceBranches: parseCommaSeparated(
+      core.getInput('blocked-source-branches') || 'main,master',
+    ),
+    honeypotTerms: parseCommaSeparated(core.getInput('honeypot-terms')),
+    maxNegativeReactions: parsePositiveInt(
+      core.getInput('max-negative-reactions'),
+      3,
+    ),
+    checkLanguageMismatch:
+      core.getInput('check-language-mismatch') !== 'false',
+    contributorHistoryCheck:
+      core.getInput('contributor-history-check') !== 'false',
+    newContributorWeightMultiplier:
+      parseFloat(core.getInput('new-contributor-weight-multiplier') || '1.5') || 1.5,
+    gracePeriodHours: parsePositiveInt(
+      core.getInput('grace-period-hours'),
+      0,
+    ),
   };
 
   if (config.slopScoreWarn >= config.slopScoreClose) {

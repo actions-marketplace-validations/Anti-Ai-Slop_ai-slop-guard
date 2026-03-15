@@ -6,6 +6,7 @@ const ALL_CATEGORIES: readonly SignalCategory[] = [
   'diff-quality',
   'description',
   'commits',
+  'metadata',
   'stacktrace',
   'duplicate',
   'semantic',

@@ -2,6 +2,7 @@ import type { Signal, PRContext } from '../types';
 import { analyzePrDiff } from './pr-diff';
 import { analyzePrDescription } from './pr-description';
 import { analyzePrCommits } from './pr-commits';
+import { analyzePrMetadata } from './pr-metadata';
 import { analyzeSemanticValue } from '../llm/analyzer';
 
 /**
@@ -16,6 +17,7 @@ export async function runPrPipeline(ctx: PRContext): Promise<Signal[]> {
     analyzePrDiff(ctx),
     analyzePrDescription(ctx),
     analyzePrCommits(ctx),
+    analyzePrMetadata(ctx),
   ];
 
   if (ctx.config.semanticAnalysis) {

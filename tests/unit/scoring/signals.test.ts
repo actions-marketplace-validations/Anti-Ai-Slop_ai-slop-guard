@@ -7,6 +7,7 @@ const VALID_CATEGORIES: SignalCategory[] = [
   'diff-quality',
   'description',
   'commits',
+  'metadata',
   'stacktrace',
   'duplicate',
   'semantic',
@@ -14,8 +15,8 @@ const VALID_CATEGORIES: SignalCategory[] = [
 
 describe('signal registry', () => {
   describe('getAllSignals', () => {
-    it('returns all 28 registered signals', () => {
-      expect(getAllSignals()).toHaveLength(28);
+    it('returns all 32 registered signals', () => {
+      expect(getAllSignals()).toHaveLength(32);
     });
 
     it('returns signals with unique IDs', () => {
@@ -73,6 +74,13 @@ describe('signal registry', () => {
 
     it('has the expected PR commits keys', () => {
       const keys = ['GENERIC_COMMIT_MSG', 'SINGLE_COMMIT_DUMP', 'AUTHOR_MISMATCH'];
+      for (const key of keys) {
+        expect(SIGNALS).toHaveProperty(key);
+      }
+    });
+
+    it('has the expected PR metadata keys', () => {
+      const keys = ['BLOCKED_SOURCE_BRANCH', 'HONEYPOT_TRIGGERED', 'COMMUNITY_FLAGGED', 'LANGUAGE_MISMATCH'];
       for (const key of keys) {
         expect(SIGNALS).toHaveProperty(key);
       }
