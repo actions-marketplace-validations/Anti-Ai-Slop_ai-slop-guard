@@ -21,7 +21,7 @@
 
 ## What's new in v0.2
 
-- **Honeypot detection** — Hide a trap word in your PR template; bots that read raw markdown will include it. Score: 5.
+- **Honeypot detection** — Hidden trap words in PR templates catch bots that read raw markdown. Score: 5.
 - **Source branch blocking** — PRs from `main`/`master` flagged automatically. Score: 4.
 - **Language mismatch detection** — Flags PRs adding files in a language foreign to the repo. Score: 3.
 - **Negative reactions check** — Community thumbs-down and confused reactions count. Score: 3.
