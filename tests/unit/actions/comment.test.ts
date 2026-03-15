@@ -21,6 +21,7 @@ function makeScore(overrides: Partial<SlopScore> = {}): SlopScore {
       'diff-quality': 0,
       description: 1.8,
       commits: 0,
+      metadata: 0,
       stacktrace: 0,
       duplicate: 0,
       semantic: 0,
@@ -77,6 +78,16 @@ describe('buildComment', () => {
   it('produces a comment under 3000 chars', () => {
     const comment = buildComment(ctx, makeScore());
     expect(comment.length).toBeLessThan(3000);
+  });
+
+  it('includes contributor note when multiplier > 1', () => {
+    const comment = buildComment(ctx, makeScore(), { contributorMultiplier: 1.5 });
+    expect(comment).toContain('first contribution');
+  });
+
+  it('does NOT include contributor note when multiplier is 1', () => {
+    const comment = buildComment(ctx, makeScore(), { contributorMultiplier: 1.0 });
+    expect(comment).not.toContain('first contribution');
   });
 
   it('shows at most 5 signals', () => {

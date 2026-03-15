@@ -46,12 +46,15 @@ async function run(): Promise<void> {
     const owner = github.context.repo.owner;
     const repo = github.context.repo.repo;
 
+    const action = String(payload['action'] ?? 'opened');
+    const isReanalysis = action !== 'opened';
+
     if (
       (eventName === 'pull_request' ||
         eventName === 'pull_request_target') &&
       config.checkPrs
     ) {
-      await handlePullRequest(octokit, owner, repo, payload, config);
+      await handlePullRequest(octokit, owner, repo, payload, config, isReanalysis);
     } else if (eventName === 'issues' && config.checkIssues) {
       await handleIssue(octokit, owner, repo, payload, config);
     } else {
@@ -70,6 +73,7 @@ async function handlePullRequest(
   repo: string,
   payload: typeof github.context.payload,
   config: GuardConfig,
+  isReanalysis = false,
 ): Promise<void> {
   const pr = payload['pull_request'];
   if (!pr) {
@@ -141,7 +145,7 @@ async function handlePullRequest(
   }
 
   core.info(`PR #${ctx.number}: score=${score.total}, verdict=${score.verdict}, signals=${score.signals.length}`);
-  await dispatchActions(score, ctx, { contributorMultiplier: multiplier, mergedPrCount: mergedCount });
+  await dispatchActions(score, ctx, { contributorMultiplier: multiplier, mergedPrCount: mergedCount, isReanalysis });
 }
 
 async function handleIssue(

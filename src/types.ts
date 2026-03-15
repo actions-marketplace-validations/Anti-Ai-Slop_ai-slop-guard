@@ -232,6 +232,7 @@ export interface ActionResult {
 export interface DispatchOptions {
   readonly contributorMultiplier?: number;
   readonly mergedPrCount?: number;
+  readonly isReanalysis?: boolean;
 }
 
 /** Complete run result */

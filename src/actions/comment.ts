@@ -129,9 +129,9 @@ This was automatically closed. If this is a mistake, a maintainer can reopen it 
 }
 
 /**
- * Post the educational comment on the PR/issue.
- * @param ctx - analysis context
- * @param score - calculated slop score
+ * Post or update the educational comment on the PR/issue.
+ * On re-analysis (edited/reopened), updates existing comment instead of
+ * creating a new one. Returns the comment ID.
  */
 export async function postComment(
   ctx: AnalysisContext,
@@ -147,11 +147,18 @@ export async function postComment(
     per_page: 30,
   });
 
-  const alreadyCommented = existingComments.some((c) =>
+  const existing = existingComments.find((c) =>
     c.body?.includes(COMMENT_SIGNATURE),
   );
 
-  if (alreadyCommented) {
+  if (existing) {
+    // Update the existing comment with fresh analysis
+    await ctx.octokit.rest.issues.updateComment({
+      owner: ctx.owner,
+      repo: ctx.repo,
+      comment_id: existing.id,
+      body: `${COMMENT_SIGNATURE}\n${body}`,
+    });
     return;
   }
 
@@ -160,6 +167,41 @@ export async function postComment(
     repo: ctx.repo,
     issue_number: ctx.number,
     body: `${COMMENT_SIGNATURE}\n${body}`,
+  });
+}
+
+/**
+ * Update the existing bot comment to a positive message when the score
+ * drops below the warn threshold after an edit.
+ */
+export async function updateCommentToClean(
+  ctx: AnalysisContext,
+): Promise<void> {
+  const { data: existingComments } = await ctx.octokit.rest.issues.listComments({
+    owner: ctx.owner,
+    repo: ctx.repo,
+    issue_number: ctx.number,
+    per_page: 30,
+  });
+
+  const existing = existingComments.find((c) =>
+    c.body?.includes(COMMENT_SIGNATURE),
+  );
+
+  if (!existing) return;
+
+  const cleanBody = `### ai-slop-guard review
+
+All checks pass now. Thanks for the improvements!
+
+---
+<sub>Automated by <a href="https://github.com/Anti-Ai-Slop/ai-slop-guard">ai-slop-guard</a></sub>`;
+
+  await ctx.octokit.rest.issues.updateComment({
+    owner: ctx.owner,
+    repo: ctx.repo,
+    comment_id: existing.id,
+    body: `${COMMENT_SIGNATURE}\n${cleanBody}`,
   });
 }
 

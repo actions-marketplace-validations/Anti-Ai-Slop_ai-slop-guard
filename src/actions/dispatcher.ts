@@ -1,8 +1,9 @@
 import * as core from '@actions/core';
 import type { SlopScore, AnalysisContext, ActionType, DispatchOptions } from '../types';
 import { addLabel } from './label';
-import { postComment } from './comment';
+import { postComment, updateCommentToClean } from './comment';
 import { closeItem } from './close';
+import { removeLabel } from './label';
 import { setOutputs } from './report';
 
 /**
@@ -25,6 +26,17 @@ export async function dispatchActions(
 
   if (score.verdict === 'clean') {
     core.info('Verdict: clean — no actions taken.');
+    // On re-analysis, if previously flagged, update comment and remove label
+    if (options.isReanalysis) {
+      try {
+        await updateCommentToClean(ctx);
+        await removeLabel(ctx, ctx.config.warnLabel);
+        await removeLabel(ctx, ctx.config.slopLabel);
+        await removeLabel(ctx, 'slop-guard-pending-close');
+      } catch (err) {
+        core.debug(`Clean-up on re-analysis: ${String(err)}`);
+      }
+    }
     return executed;
   }
 

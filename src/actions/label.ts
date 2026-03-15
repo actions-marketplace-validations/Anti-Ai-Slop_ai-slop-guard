@@ -36,3 +36,24 @@ export async function addLabel(
     labels: [labelName],
   });
 }
+
+/**
+ * Remove a label from the PR/issue. Silently ignores if the label isn't present.
+ * @param ctx - analysis context
+ * @param labelName - label to remove
+ */
+export async function removeLabel(
+  ctx: AnalysisContext,
+  labelName: string,
+): Promise<void> {
+  try {
+    await ctx.octokit.rest.issues.removeLabel({
+      owner: ctx.owner,
+      repo: ctx.repo,
+      issue_number: ctx.number,
+      name: labelName,
+    });
+  } catch {
+    // Label not present — ignore
+  }
+}
