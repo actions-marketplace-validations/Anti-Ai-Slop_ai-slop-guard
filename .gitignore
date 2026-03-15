@@ -1,0 +1,10 @@
+node_modules/
+coverage/
+.env
+*.tgz
+*.log
+.DS_Store
+
+# Development scaffolding — not for public repo
+.claude/
+CLAUDE.md

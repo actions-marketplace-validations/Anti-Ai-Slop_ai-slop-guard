@@ -1,0 +1,40 @@
+{
+  "name": "ai-slop-guard",
+  "version": "0.1.0",
+  "description": "GitHub Action that detects low-quality AI-generated PRs and issues by analyzing actual content",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/ tests/",
+    "typecheck": "tsc --noEmit",
+    "test:live": "npx tsx tests/live/run-all.ts"
+  },
+  "keywords": [
+    "github-action",
+    "ai-slop",
+    "code-quality",
+    "pull-request",
+    "issue"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.10.1",
+    "@actions/github": "^6.0.0",
+    "fuzzball": "^2.1.3",
+    "neverthrow": "^8.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vitest/coverage-v8": "^2.1.9",
+    "eslint": "^8.57.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  }
+}

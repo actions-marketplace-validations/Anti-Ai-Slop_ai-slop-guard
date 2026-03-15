@@ -1,0 +1,103 @@
+name: 'AI Slop Guard'
+description: 'Detect low-quality AI-generated PRs and issues by analyzing actual content'
+author: 'ai-slop-guard'
+
+branding:
+  icon: 'shield'
+  color: 'orange'
+
+inputs:
+  github-token:
+    description: 'GitHub token for API access'
+    required: false
+    default: ${{ github.token }}
+  check-prs:
+    description: 'Enable PR analysis'
+    required: false
+    default: 'true'
+  check-issues:
+    description: 'Enable issue analysis'
+    required: false
+    default: 'true'
+  slop-score-warn:
+    description: 'Score threshold for warning verdict'
+    required: false
+    default: '6'
+  slop-score-close:
+    description: 'Score threshold for close verdict'
+    required: false
+    default: '12'
+  on-warn:
+    description: 'Actions on warn verdict (comma-separated: label,comment)'
+    required: false
+    default: 'label,comment'
+  on-close:
+    description: 'Actions on close verdict (comma-separated: label,comment,close)'
+    required: false
+    default: 'label,comment,close'
+  warn-label:
+    description: 'Label to apply on warn'
+    required: false
+    default: 'needs-review'
+  slop-label:
+    description: 'Label to apply on likely-slop'
+    required: false
+    default: 'likely-slop'
+  semantic-analysis:
+    description: 'Enable optional LLM semantic analysis'
+    required: false
+    default: 'false'
+  llm-provider:
+    description: 'LLM provider: ollama, anthropic, openai, openrouter, custom'
+    required: false
+    default: 'ollama'
+  llm-model:
+    description: 'Model name — passed to the provider as-is. Required when semantic-analysis is true. No default. Examples: qwen2.5-coder:7b, claude-sonnet-4-20250514, gpt-4o-mini, google/gemini-2.5-flash'
+    required: false
+    default: ''
+  llm-api-key:
+    description: 'API key for cloud LLM providers (Anthropic, OpenAI, OpenRouter)'
+    required: false
+    default: ''
+  llm-base-url:
+    description: 'Base URL for the LLM API. Required for custom provider.'
+    required: false
+    default: ''
+  llm-max-tokens:
+    description: 'Maximum tokens for LLM response'
+    required: false
+    default: '1024'
+  llm-temperature:
+    description: 'Temperature for LLM generation'
+    required: false
+    default: '0.1'
+  llm-timeout:
+    description: 'Timeout in milliseconds for LLM requests'
+    required: false
+    default: '60000'
+  ollama-model:
+    description: 'Deprecated: use llm-model instead. Kept for backwards compatibility.'
+    required: false
+    default: ''
+  exempt-users:
+    description: 'Comma-separated list of exempt usernames'
+    required: false
+    default: ''
+  exempt-labels:
+    description: 'Comma-separated list of exempt labels'
+    required: false
+    default: 'human-verified'
+
+outputs:
+  slop-score:
+    description: 'Computed slop score'
+  verdict:
+    description: 'Verdict: clean, suspicious, or likely-slop'
+  signals:
+    description: 'JSON array of signal IDs that fired'
+  actions-taken:
+    description: 'Comma-separated list of actions taken'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
