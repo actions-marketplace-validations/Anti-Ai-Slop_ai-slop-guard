@@ -132,6 +132,27 @@ Every signal ai-slop-guard can produce, with detailed explanations.
 **What:** >85% similar to an existing open issue.
 **How to fix:** Search existing issues before opening a new one.
 
+## PR — Metadata
+
+### `blocked-source-branch` (score: 4)
+**What:** PR was opened from a blocked source branch (e.g. `main`, `master`).
+**Why it matters:** Opening PRs directly from main/master is a common pattern in low-quality contributions.
+**How to fix:** Create a feature branch and open the PR from there.
+
+### `honeypot-triggered` (score: 5)
+**What:** PR body contains a honeypot term hidden in the PR template.
+**Why it matters:** AI bots read raw markdown and follow hidden instructions that humans never see.
+**How to fix:** This is a strong indicator of automated generation.
+
+### `community-flagged` (score: 3)
+**What:** PR received excessive negative reactions (thumbs_down + confused) from the community.
+**How to fix:** Review the community feedback and address concerns.
+
+### `language-mismatch` (score: 3)
+**What:** >50% of added files use a programming language that represents <5% of the repository.
+**Why it matters:** Adding Python files to a TypeScript project is a common AI slop pattern.
+**How to fix:** Verify the language choice is intentional for this repository.
+
 ## Semantic (Optional)
 
 ### `no-functional-value` (score: 4)

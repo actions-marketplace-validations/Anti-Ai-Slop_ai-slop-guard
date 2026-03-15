@@ -1,6 +1,6 @@
 {
   "name": "ai-slop-guard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "GitHub Action that detects low-quality AI-generated PRs and issues by analyzing actual content",
   "main": "dist/index.js",
   "scripts": {

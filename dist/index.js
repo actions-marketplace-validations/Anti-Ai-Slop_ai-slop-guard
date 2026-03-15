@@ -401,7 +401,7 @@ var require_tunnel = __commonJS({
         connectOptions.headers = connectOptions.headers || {};
         connectOptions.headers["Proxy-Authorization"] = "Basic " + new Buffer(connectOptions.proxyAuth).toString("base64");
       }
-      debug2("making CONNECT request");
+      debug5("making CONNECT request");
       var connectReq = self2.request(connectOptions);
       connectReq.useChunkedEncodingByDefault = false;
       connectReq.once("response", onResponse);
@@ -421,7 +421,7 @@ var require_tunnel = __commonJS({
         connectReq.removeAllListeners();
         socket.removeAllListeners();
         if (res.statusCode !== 200) {
-          debug2(
+          debug5(
             "tunneling socket could not be established, statusCode=%d",
             res.statusCode
           );
@@ -433,7 +433,7 @@ var require_tunnel = __commonJS({
           return;
         }
         if (head.length > 0) {
-          debug2("got illegal response body from proxy");
+          debug5("got illegal response body from proxy");
           socket.destroy();
           var error = new Error("got illegal response body from proxy");
           error.code = "ECONNRESET";
@@ -441,13 +441,13 @@ var require_tunnel = __commonJS({
           self2.removeSocket(placeholder);
           return;
         }
-        debug2("tunneling connection has established");
+        debug5("tunneling connection has established");
         self2.sockets[self2.sockets.indexOf(placeholder)] = socket;
         return cb(socket);
       }
       function onError(cause) {
         connectReq.removeAllListeners();
-        debug2(
+        debug5(
           "tunneling socket could not be established, cause=%s\n",
           cause.message,
           cause.stack
@@ -509,9 +509,9 @@ var require_tunnel = __commonJS({
       }
       return target;
     }
-    var debug2;
+    var debug5;
     if (process.env.NODE_DEBUG && /\btunnel\b/.test(process.env.NODE_DEBUG)) {
-      debug2 = function() {
+      debug5 = function() {
         var args = Array.prototype.slice.call(arguments);
         if (typeof args[0] === "string") {
           args[0] = "TUNNEL: " + args[0];
@@ -521,10 +521,10 @@ var require_tunnel = __commonJS({
         console.error.apply(console, args);
       };
     } else {
-      debug2 = function() {
+      debug5 = function() {
       };
     }
-    exports2.debug = debug2;
+    exports2.debug = debug5;
   }
 });
 
@@ -19744,10 +19744,10 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       return process.env["RUNNER_DEBUG"] === "1";
     }
     exports2.isDebug = isDebug;
-    function debug2(message) {
+    function debug5(message) {
       (0, command_1.issueCommand)("debug", {}, message);
     }
-    exports2.debug = debug2;
+    exports2.debug = debug5;
     function error(message, properties = {}) {
       (0, command_1.issueCommand)("error", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
@@ -23936,7 +23936,7 @@ var require_github = __commonJS({
 });
 
 // src/index.ts
-var core14 = __toESM(require_core());
+var core16 = __toESM(require_core());
 var github = __toESM(require_github());
 
 // src/config/schema.ts
@@ -24474,7 +24474,22 @@ function resolveConfig() {
     ollamaModel: llmModel,
     llm: llmConfig,
     exemptUsers: parseCommaSeparated(core.getInput("exempt-users")),
-    exemptLabels: parseCommaSeparated(core.getInput("exempt-labels"))
+    exemptLabels: parseCommaSeparated(core.getInput("exempt-labels")),
+    blockedSourceBranches: parseCommaSeparated(
+      core.getInput("blocked-source-branches") || "main,master"
+    ),
+    honeypotTerms: parseCommaSeparated(core.getInput("honeypot-terms")),
+    maxNegativeReactions: parsePositiveInt(
+      core.getInput("max-negative-reactions"),
+      3
+    ),
+    checkLanguageMismatch: core.getInput("check-language-mismatch") !== "false",
+    contributorHistoryCheck: core.getInput("contributor-history-check") !== "false",
+    newContributorWeightMultiplier: parseFloat(core.getInput("new-contributor-weight-multiplier") || "1.5") || 1.5,
+    gracePeriodHours: parsePositiveInt(
+      core.getInput("grace-period-hours"),
+      0
+    )
   };
   if (config.slopScoreWarn >= config.slopScoreClose) {
     return err(
@@ -24954,6 +24969,35 @@ var SIGNALS = {
     3,
     "Duplicate issue",
     "Similar to an existing issue (fuzzy match >85%)"
+  ),
+  // ── PR — Metadata ──────────────────────────────────────────────────
+  BLOCKED_SOURCE_BRANCH: def(
+    "blocked-source-branch",
+    "metadata",
+    4,
+    "Blocked source branch",
+    "PR was opened from a blocked branch (e.g. main, master)"
+  ),
+  HONEYPOT_TRIGGERED: def(
+    "honeypot-triggered",
+    "metadata",
+    5,
+    "Honeypot triggered",
+    "PR body contains a hidden honeypot term from the PR template"
+  ),
+  COMMUNITY_FLAGGED: def(
+    "community-flagged",
+    "metadata",
+    3,
+    "Community flagged",
+    "PR received excessive negative reactions from the community"
+  ),
+  LANGUAGE_MISMATCH: def(
+    "language-mismatch",
+    "metadata",
+    3,
+    "Language mismatch",
+    "Most added files use a language foreign to this repository"
   ),
   // ── Semantic (optional, LLM) ─────────────────────────────────────────
   NO_FUNCTIONAL_VALUE: def(
@@ -25531,7 +25575,7 @@ function checkSingleCommitDump(ctx) {
 }
 function checkAuthorMismatch(ctx) {
   const mismatchedCommits = ctx.commits.filter(
-    (c2) => c2.author !== ctx.author
+    (c2) => c2.author.toLowerCase() !== ctx.author.toLowerCase()
   );
   if (mismatchedCommits.length === 0) return null;
   const ratio = mismatchedCommits.length / ctx.commits.length;
@@ -25548,14 +25592,199 @@ function checkAuthorMismatch(ctx) {
   };
 }
 
+// src/analyzers/pr-metadata.ts
+var core6 = __toESM(require_core());
+async function analyzePrMetadata(ctx) {
+  const signals = [];
+  checkSourceBranch(ctx, signals);
+  checkHoneypot(ctx, signals);
+  await checkNegativeReactions(ctx, signals);
+  await checkLanguageMismatch(ctx, signals);
+  return signals;
+}
+function checkSourceBranch(ctx, signals) {
+  const blocked = ctx.config.blockedSourceBranches;
+  if (blocked.length === 0) return;
+  const head = ctx.headBranch.toLowerCase();
+  const match = blocked.find((b2) => b2.toLowerCase() === head);
+  if (match) {
+    const def2 = SIGNALS.BLOCKED_SOURCE_BRANCH;
+    signals.push({
+      id: def2.id,
+      category: def2.category,
+      score: def2.defaultScore,
+      confidence: 0.9,
+      detail: `PR was opened from "${ctx.headBranch}" which is a blocked source branch.`,
+      evidence: ctx.headBranch
+    });
+  }
+}
+function checkHoneypot(ctx, signals) {
+  const terms = ctx.config.honeypotTerms;
+  if (terms.length === 0) return;
+  const bodyLower = ctx.body.toLowerCase();
+  const found = terms.filter((t2) => bodyLower.includes(t2.toLowerCase()));
+  if (found.length > 0) {
+    const def2 = SIGNALS.HONEYPOT_TRIGGERED;
+    signals.push({
+      id: def2.id,
+      category: def2.category,
+      score: def2.defaultScore,
+      confidence: 1,
+      detail: `PR body contains honeypot term(s): ${found.join(", ")}`,
+      evidence: found.join(", ")
+    });
+  }
+}
+async function checkNegativeReactions(ctx, signals) {
+  const max = ctx.config.maxNegativeReactions;
+  if (max <= 0) return;
+  try {
+    const { data: pr2 } = await ctx.octokit.rest.pulls.get({
+      owner: ctx.owner,
+      repo: ctx.repo,
+      pull_number: ctx.number
+    });
+    const reactions = pr2["reactions"];
+    if (!reactions) return;
+    const thumbsDown = reactions["-1"] ?? 0;
+    const confused = reactions["confused"] ?? 0;
+    const total = thumbsDown + confused;
+    if (total > max) {
+      const def2 = SIGNALS.COMMUNITY_FLAGGED;
+      signals.push({
+        id: def2.id,
+        category: def2.category,
+        score: def2.defaultScore,
+        confidence: 0.8,
+        detail: `PR has ${total} negative reactions (${thumbsDown} thumbs down, ${confused} confused). Threshold: ${max}.`,
+        evidence: `thumbs_down=${thumbsDown}, confused=${confused}`
+      });
+    }
+  } catch (err2) {
+    core6.debug(`Negative reactions check failed: ${String(err2)}`);
+  }
+}
+var CONFIG_EXTENSIONS = /* @__PURE__ */ new Set([
+  ".json",
+  ".yml",
+  ".yaml",
+  ".md",
+  ".txt",
+  ".toml",
+  ".cfg",
+  ".env",
+  ".gitignore",
+  ".lock",
+  ".ini",
+  ".editorconfig",
+  ".prettierrc",
+  ".eslintrc",
+  ".babelrc"
+]);
+var EXT_TO_LANGUAGE = {
+  ".ts": "TypeScript",
+  ".tsx": "TypeScript",
+  ".js": "JavaScript",
+  ".jsx": "JavaScript",
+  ".mjs": "JavaScript",
+  ".cjs": "JavaScript",
+  ".py": "Python",
+  ".rb": "Ruby",
+  ".java": "Java",
+  ".kt": "Kotlin",
+  ".go": "Go",
+  ".rs": "Rust",
+  ".cs": "C#",
+  ".cpp": "C++",
+  ".cc": "C++",
+  ".cxx": "C++",
+  ".hpp": "C++",
+  ".c": "C",
+  ".h": "C",
+  ".swift": "Swift",
+  ".php": "PHP",
+  ".scala": "Scala",
+  ".dart": "Dart",
+  ".lua": "Lua",
+  ".r": "R",
+  ".R": "R",
+  ".ex": "Elixir",
+  ".exs": "Elixir",
+  ".erl": "Erlang",
+  ".zig": "Zig",
+  ".nim": "Nim",
+  ".sh": "Shell",
+  ".bash": "Shell",
+  ".zsh": "Shell",
+  ".vue": "Vue",
+  ".svelte": "Svelte"
+};
+function getExtension(filePath) {
+  const dot = filePath.lastIndexOf(".");
+  return dot === -1 ? "" : filePath.slice(dot).toLowerCase();
+}
+function isConfigExtension(ext) {
+  return CONFIG_EXTENSIONS.has(ext);
+}
+async function checkLanguageMismatch(ctx, signals) {
+  if (!ctx.config.checkLanguageMismatch) return;
+  const addedFiles = ctx.diff.files.filter(
+    (f2) => f2.status === "added" || f2.status === "modified"
+  );
+  if (addedFiles.length === 0) return;
+  const langCounts = /* @__PURE__ */ new Map();
+  let codedFileCount = 0;
+  for (const file of addedFiles) {
+    const ext = getExtension(file.newPath);
+    if (!ext || isConfigExtension(ext)) continue;
+    const lang = EXT_TO_LANGUAGE[ext];
+    if (!lang) continue;
+    codedFileCount++;
+    langCounts.set(lang, (langCounts.get(lang) ?? 0) + 1);
+  }
+  if (codedFileCount === 0) return;
+  let repoLanguages;
+  try {
+    const { data } = await ctx.octokit.rest.repos.listLanguages({
+      owner: ctx.owner,
+      repo: ctx.repo
+    });
+    repoLanguages = data;
+  } catch (err2) {
+    core6.debug(`Language mismatch check failed: ${String(err2)}`);
+    return;
+  }
+  const totalBytes = Object.values(repoLanguages).reduce((a2, b2) => a2 + b2, 0);
+  if (totalBytes === 0) return;
+  for (const [lang, count] of langCounts) {
+    const proportion = count / codedFileCount;
+    if (proportion <= 0.5) continue;
+    const repoBytes = repoLanguages[lang] ?? 0;
+    const repoPercent = repoBytes / totalBytes;
+    if (repoPercent < 0.05) {
+      const def2 = SIGNALS.LANGUAGE_MISMATCH;
+      signals.push({
+        id: def2.id,
+        category: def2.category,
+        score: def2.defaultScore,
+        confidence: 0.7,
+        detail: `${Math.round(proportion * 100)}% of added files are ${lang}, which represents only ${Math.round(repoPercent * 100)}% of this repository.`,
+        evidence: `${count}/${codedFileCount} files are ${lang}`
+      });
+      break;
+    }
+  }
+}
+
 // src/llm/analyzer.ts
-var core8 = __toESM(require_core());
+var core9 = __toESM(require_core());
 
 // src/llm/adapters/ollama.ts
-var core7 = __toESM(require_core());
+var core8 = __toESM(require_core());
 
 // src/llm/adapters/base.ts
-var core6 = __toESM(require_core());
+var core7 = __toESM(require_core());
 function mapHttpError(status, body, provider) {
   let code;
   if (status === 401 || status === 403) code = "auth_failed";
@@ -25566,7 +25795,7 @@ function mapHttpError(status, body, provider) {
 }
 async function llmFetch(url, init, provider, timeoutMs, maxRetries = 2) {
   const hostname = new URL(url).hostname;
-  core6.debug(`LLM request to ${hostname}`);
+  core7.debug(`LLM request to ${hostname}`);
   let lastError;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -25661,7 +25890,7 @@ ${request2.userPrompt}` : request2.userPrompt;
       const data = await response.json();
       const available = (data.models ?? []).map((m2) => m2.name);
       if (available.length > 0 && !available.some((n2) => n2.startsWith(this.model))) {
-        core7.warning(
+        core8.warning(
           `Model "${this.model}" not found locally. Available: ${available.join(", ")}. Run: ollama pull ${this.model}`
         );
       }
@@ -25765,7 +25994,7 @@ var OpenAICompatAdapter = class {
       headers["Authorization"] = `Bearer ${this.apiKey}`;
     }
     if (this.isOpenRouter) {
-      headers["HTTP-Referer"] = "https://github.com/anthropics/ai-slop-guard";
+      headers["HTTP-Referer"] = "https://github.com/Anti-Ai-Slop/ai-slop-guard";
       headers["X-Title"] = "ai-slop-guard";
     }
     let systemContent = request2.systemPrompt;
@@ -25918,23 +26147,23 @@ async function analyzeSemanticValue(ctx) {
   if (!ctx.config.semanticAnalysis) return [];
   const adapterResult = createLLMAdapter(ctx.config.llm);
   if (adapterResult.isErr()) {
-    core8.warning(`Semantic analysis skipped: ${adapterResult.error.message}`);
+    core9.warning(`Semantic analysis skipped: ${adapterResult.error.message}`);
     return [];
   }
   const adapter = adapterResult.value;
   const healthy = await adapter.healthCheck();
   if (!healthy) {
-    core8.warning(`LLM provider "${adapter.provider}" is not available. Skipping semantic analysis.`);
+    core9.warning(`LLM provider "${adapter.provider}" is not available. Skipping semantic analysis.`);
     return [];
   }
   const diffText = ctx.diff.files.flatMap((f2) => f2.additions.map((l2) => `+${l2.content}`)).join("\n");
   const request2 = buildSemanticPrompt(diffText, ctx.title, ctx.body);
   try {
     const response = await adapter.complete(request2);
-    core8.info(`Semantic analysis completed (${adapter.provider}/${response.model}, ${response.latencyMs}ms)`);
+    core9.info(`Semantic analysis completed (${adapter.provider}/${response.model}, ${response.latencyMs}ms)`);
     const parsed = parseSemanticResponse(response.text);
     if (!parsed) {
-      core8.warning("Could not parse LLM response as JSON. Skipping.");
+      core9.warning("Could not parse LLM response as JSON. Skipping.");
       return [];
     }
     if (parsed.is_cosmetic_only && !parsed.adds_functionality && !parsed.fixes_bug) {
@@ -25950,7 +26179,7 @@ async function analyzeSemanticValue(ctx) {
     return [];
   } catch (error) {
     const message = error instanceof Error ? error.message : typeof error === "object" && error !== null && "message" in error ? String(error.message) : String(error);
-    core8.warning(`Semantic analysis failed: ${message}`);
+    core9.warning(`Semantic analysis failed: ${message}`);
     return [];
   }
 }
@@ -25960,7 +26189,8 @@ async function runPrPipeline(ctx) {
   const analyzers = [
     analyzePrDiff(ctx),
     analyzePrDescription(ctx),
-    analyzePrCommits(ctx)
+    analyzePrCommits(ctx),
+    analyzePrMetadata(ctx)
   ];
   if (ctx.config.semanticAnalysis) {
     analyzers.push(analyzeSemanticValue(ctx));
@@ -26121,7 +26351,7 @@ async function fetchReferencedFileContents(octokit, owner, repo, issueBody, repo
 }
 
 // src/analyzers/issue-content.ts
-var core9 = __toESM(require_core());
+var core10 = __toESM(require_core());
 async function analyzeIssueContent(ctx) {
   const signals = [];
   const text = `${ctx.title}
@@ -26137,7 +26367,7 @@ ${ctx.body}`;
       const result = await check();
       if (result) signals.push(result);
     } catch (err2) {
-      core9.warning(`issue-content check failed: ${String(err2)}`);
+      core10.warning(`issue-content check failed: ${String(err2)}`);
     }
   }
   return signals;
@@ -26202,7 +26432,7 @@ async function checkVersionMismatch(ctx) {
 }
 
 // src/analyzers/issue-stacktrace.ts
-var core10 = __toESM(require_core());
+var core11 = __toESM(require_core());
 async function analyzeIssueStackTrace(ctx) {
   const signals = [];
   const frames = parseStackTrace(ctx.body);
@@ -26217,7 +26447,7 @@ async function analyzeIssueStackTrace(ctx) {
       const result = check();
       if (result) signals.push(result);
     } catch (err2) {
-      core10.warning(`issue-stacktrace check failed: ${String(err2)}`);
+      core11.warning(`issue-stacktrace check failed: ${String(err2)}`);
     }
   }
   return signals;
@@ -26297,7 +26527,7 @@ function escapeRegex2(str) {
 }
 
 // src/analyzers/duplicate-detector.ts
-var core11 = __toESM(require_core());
+var core12 = __toESM(require_core());
 
 // node_modules/fuzzball/dist/esm/fuzzball.esm.min.js
 var e;
@@ -27842,7 +28072,7 @@ async function detectDuplicates(ctx) {
     const result = checkDuplicateIssue(ctx);
     if (result) signals.push(result);
   } catch (err2) {
-    core11.warning(`duplicate-detector check failed: ${String(err2)}`);
+    core12.warning(`duplicate-detector check failed: ${String(err2)}`);
   }
   return signals;
 }
@@ -27916,6 +28146,7 @@ var ALL_CATEGORIES = [
   "diff-quality",
   "description",
   "commits",
+  "metadata",
   "stacktrace",
   "duplicate",
   "semantic"
@@ -27957,8 +28188,70 @@ function determineVerdict(total, warnThreshold, closeThreshold) {
   return "clean";
 }
 
-// src/actions/dispatcher.ts
+// src/scoring/contributor.ts
 var core13 = __toESM(require_core());
+var KNOWN_BOTS = [
+  "dependabot[bot]",
+  "renovate[bot]",
+  "github-actions[bot]",
+  "mergify[bot]",
+  "depfu[bot]",
+  "snyk-bot",
+  "greenkeeper[bot]"
+];
+async function applyContributorMultiplier(score, octokit, owner, repo, author, config) {
+  if (!config.contributorHistoryCheck) {
+    return { score, multiplier: 1, mergedCount: -1 };
+  }
+  if (KNOWN_BOTS.some((b2) => b2.toLowerCase() === author.toLowerCase())) {
+    return { score, multiplier: 1, mergedCount: -1 };
+  }
+  if (config.exemptUsers.some((u2) => u2.toLowerCase() === author.toLowerCase())) {
+    return { score, multiplier: 1, mergedCount: -1 };
+  }
+  let mergedCount;
+  try {
+    const { data: pulls } = await octokit.rest.pulls.list({
+      owner,
+      repo,
+      state: "closed",
+      sort: "updated",
+      direction: "desc",
+      per_page: 100
+    });
+    mergedCount = pulls.filter(
+      (p2) => p2.user?.login?.toLowerCase() === author.toLowerCase() && p2.merged_at !== null
+    ).length;
+  } catch (err2) {
+    core13.debug(`Contributor history check failed: ${String(err2)}`);
+    return { score, multiplier: 1, mergedCount: -1 };
+  }
+  let multiplier;
+  if (mergedCount === 0) {
+    multiplier = config.newContributorWeightMultiplier;
+  } else if (mergedCount <= 2) {
+    multiplier = 1.25;
+  } else {
+    multiplier = 1;
+  }
+  if (multiplier === 1) {
+    return { score, multiplier, mergedCount };
+  }
+  const newTotal = Math.round(score.total * multiplier * 100) / 100;
+  const warnThreshold = config.slopScoreWarn;
+  const closeThreshold = config.slopScoreClose;
+  let verdict = "clean";
+  if (newTotal >= closeThreshold) verdict = "likely-slop";
+  else if (newTotal >= warnThreshold) verdict = "suspicious";
+  return {
+    score: { ...score, total: newTotal, verdict },
+    multiplier,
+    mergedCount
+  };
+}
+
+// src/actions/dispatcher.ts
+var core15 = __toESM(require_core());
 
 // src/actions/label.ts
 var WARN_COLOR = "E8A317";
@@ -27983,6 +28276,17 @@ async function addLabel(ctx, labelName) {
     issue_number: number,
     labels: [labelName]
   });
+}
+async function removeLabel(ctx, labelName) {
+  try {
+    await ctx.octokit.rest.issues.removeLabel({
+      owner: ctx.owner,
+      repo: ctx.repo,
+      issue_number: ctx.number,
+      name: labelName
+    });
+  } catch {
+  }
 }
 
 // src/actions/comment.ts
@@ -28015,9 +28319,13 @@ var SUGGESTIONS = {
   "version-mismatch": "Double-check the version number \u2014 it may not exist.",
   "overly-formal-issue": "Use a conversational tone \u2014 just describe the problem.",
   "duplicate-issue": "Search existing issues before opening a new one.",
-  "no-functional-value": "Explain the functional value this change adds."
+  "no-functional-value": "Explain the functional value this change adds.",
+  "blocked-source-branch": "Create a feature branch instead of opening PRs from main/master.",
+  "honeypot-triggered": "Your PR description contains a term that suggests automated generation.",
+  "community-flagged": "This PR has received negative feedback from the community \u2014 please review the concerns.",
+  "language-mismatch": "Most files in this PR use a language uncommon in this repository \u2014 verify this is intentional."
 };
-function buildComment(ctx, score) {
+function buildComment(ctx, score, options = {}) {
   const itemType = "eventType" in ctx && ctx.eventType === "pull_request" ? "PR" : "issue";
   const topSignals = [...score.signals].sort((a2, b2) => b2.score * b2.confidence - a2.score * a2.confidence).slice(0, 5);
   const rows = topSignals.map((s2) => buildRow(s2)).join("\n");
@@ -28031,6 +28339,11 @@ This ${itemType} was automatically flagged for review. Here's what we found:
 ${rows}
 
 **Slop Score: ${score.total}** \u2014 _${score.verdict}_`;
+  if (options.contributorMultiplier && options.contributorMultiplier > 1) {
+    body += `
+
+> **Note:** This appears to be your first contribution to this project. The review thresholds are slightly stricter for new contributors.`;
+  }
   if (score.verdict === "suspicious" && suggestions) {
     body += `
 
@@ -28039,25 +28352,40 @@ ${suggestions}
 - If this is a legitimate contribution, a maintainer can add the \`${ctx.config.exemptLabels[0] ?? "human-verified"}\` label to bypass.`;
   }
   if (score.verdict === "likely-slop") {
-    body += `
+    const gracePeriod = ctx.config.gracePeriodHours;
+    if (gracePeriod > 0) {
+      body += `
+
+**You have ${gracePeriod} hours to address these issues before this PR is automatically closed.**
+If this is a legitimate contribution, a maintainer can add the \`${ctx.config.exemptLabels[0] ?? "human-verified"}\` label to bypass.`;
+    } else {
+      body += `
 
 This was automatically closed. If this is a mistake, a maintainer can reopen it and add the \`${ctx.config.exemptLabels[0] ?? "human-verified"}\` label.`;
+    }
   }
-  body += '\n\n---\n<sub>Automated by <a href="https://github.com/anthropics/ai-slop-guard">ai-slop-guard</a></sub>';
+  body += '\n\n---\n<sub>Automated by <a href="https://github.com/Anti-Ai-Slop/ai-slop-guard">ai-slop-guard</a></sub>';
   return body;
 }
-async function postComment(ctx, score) {
-  const body = buildComment(ctx, score);
+async function postComment(ctx, score, options = {}) {
+  const body = buildComment(ctx, score, options);
   const { data: existingComments } = await ctx.octokit.rest.issues.listComments({
     owner: ctx.owner,
     repo: ctx.repo,
     issue_number: ctx.number,
     per_page: 30
   });
-  const alreadyCommented = existingComments.some(
+  const existing = existingComments.find(
     (c2) => c2.body?.includes(COMMENT_SIGNATURE)
   );
-  if (alreadyCommented) {
+  if (existing) {
+    await ctx.octokit.rest.issues.updateComment({
+      owner: ctx.owner,
+      repo: ctx.repo,
+      comment_id: existing.id,
+      body: `${COMMENT_SIGNATURE}
+${body}`
+    });
     return;
   }
   await ctx.octokit.rest.issues.createComment({
@@ -28066,6 +28394,31 @@ async function postComment(ctx, score) {
     issue_number: ctx.number,
     body: `${COMMENT_SIGNATURE}
 ${body}`
+  });
+}
+async function updateCommentToClean(ctx) {
+  const { data: existingComments } = await ctx.octokit.rest.issues.listComments({
+    owner: ctx.owner,
+    repo: ctx.repo,
+    issue_number: ctx.number,
+    per_page: 30
+  });
+  const existing = existingComments.find(
+    (c2) => c2.body?.includes(COMMENT_SIGNATURE)
+  );
+  if (!existing) return;
+  const cleanBody = `### ai-slop-guard review
+
+All checks pass now. Thanks for the improvements!
+
+---
+<sub>Automated by <a href="https://github.com/Anti-Ai-Slop/ai-slop-guard">ai-slop-guard</a></sub>`;
+  await ctx.octokit.rest.issues.updateComment({
+    owner: ctx.owner,
+    repo: ctx.repo,
+    comment_id: existing.id,
+    body: `${COMMENT_SIGNATURE}
+${cleanBody}`
   });
 }
 function buildRow(signal) {
@@ -28086,23 +28439,33 @@ async function closeItem(ctx) {
 }
 
 // src/actions/report.ts
-var core12 = __toESM(require_core());
+var core14 = __toESM(require_core());
 function setOutputs(score, actionsTaken) {
-  core12.setOutput("slop-score", score.total.toString());
-  core12.setOutput("verdict", score.verdict);
-  core12.setOutput(
+  core14.setOutput("slop-score", score.total.toString());
+  core14.setOutput("verdict", score.verdict);
+  core14.setOutput(
     "signals",
     JSON.stringify(score.signals.map((s2) => s2.id))
   );
-  core12.setOutput("actions-taken", actionsTaken.join(","));
+  core14.setOutput("actions-taken", actionsTaken.join(","));
 }
 
 // src/actions/dispatcher.ts
-async function dispatchActions(score, ctx) {
+async function dispatchActions(score, ctx, options = {}) {
   const executed = [];
   setOutputs(score, executed);
   if (score.verdict === "clean") {
-    core13.info("Verdict: clean \u2014 no actions taken.");
+    core15.info("Verdict: clean \u2014 no actions taken.");
+    if (options.isReanalysis) {
+      try {
+        await updateCommentToClean(ctx);
+        await removeLabel(ctx, ctx.config.warnLabel);
+        await removeLabel(ctx, ctx.config.slopLabel);
+        await removeLabel(ctx, "slop-guard-pending-close");
+      } catch (err2) {
+        core15.debug(`Clean-up on re-analysis: ${String(err2)}`);
+      }
+    }
     return executed;
   }
   const actions = score.verdict === "likely-slop" ? ctx.config.onClose : ctx.config.onWarn;
@@ -28112,23 +28475,35 @@ async function dispatchActions(score, ctx) {
       await addLabel(ctx, label);
       executed.push("label");
     } catch (err2) {
-      core13.warning(`Failed to add label: ${String(err2)}`);
+      core15.warning(`Failed to add label: ${String(err2)}`);
     }
   }
   if (actions.includes("comment")) {
     try {
-      await postComment(ctx, score);
+      await postComment(ctx, score, options);
       executed.push("comment");
     } catch (err2) {
-      core13.warning(`Failed to post comment: ${String(err2)}`);
+      core15.warning(`Failed to post comment: ${String(err2)}`);
     }
   }
   if (actions.includes("close")) {
-    try {
-      await closeItem(ctx);
-      executed.push("close");
-    } catch (err2) {
-      core13.warning(`Failed to close item: ${String(err2)}`);
+    const gracePeriod = ctx.config.gracePeriodHours;
+    if (gracePeriod > 0) {
+      try {
+        await addLabel(ctx, "slop-guard-pending-close");
+        core15.info(
+          `Grace period active (${gracePeriod}h) \u2014 not closing, added pending-close label.`
+        );
+      } catch (err2) {
+        core15.warning(`Failed to add pending-close label: ${String(err2)}`);
+      }
+    } else {
+      try {
+        await closeItem(ctx);
+        executed.push("close");
+      } catch (err2) {
+        core15.warning(`Failed to close item: ${String(err2)}`);
+      }
     }
   }
   setOutputs(score, executed);
@@ -28136,7 +28511,7 @@ async function dispatchActions(score, ctx) {
 }
 
 // src/index.ts
-var KNOWN_BOTS = [
+var KNOWN_BOTS2 = [
   "dependabot[bot]",
   "renovate[bot]",
   "github-actions[bot]",
@@ -28149,42 +28524,44 @@ async function run() {
   try {
     const configResult = resolveConfig();
     if (configResult.isErr()) {
-      core14.setFailed(`Config error: ${configResult.error}`);
+      core16.setFailed(`Config error: ${configResult.error}`);
       return;
     }
     const config = configResult.value;
     const { eventName, payload } = github.context;
-    const token = core14.getInput("github-token") || process.env["GITHUB_TOKEN"] || "";
+    const token = core16.getInput("github-token") || process.env["GITHUB_TOKEN"] || "";
     if (!token) {
-      core14.setFailed("No GitHub token provided.");
+      core16.setFailed("No GitHub token provided.");
       return;
     }
     const octokit = github.getOctokit(token);
     const owner = github.context.repo.owner;
     const repo = github.context.repo.repo;
+    const action = String(payload["action"] ?? "opened");
+    const isReanalysis = action !== "opened";
     if ((eventName === "pull_request" || eventName === "pull_request_target") && config.checkPrs) {
-      await handlePullRequest(octokit, owner, repo, payload, config);
+      await handlePullRequest(octokit, owner, repo, payload, config, isReanalysis);
     } else if (eventName === "issues" && config.checkIssues) {
       await handleIssue(octokit, owner, repo, payload, config);
     } else {
-      core14.info(`Event "${eventName}" \u2014 skipping.`);
+      core16.info(`Event "${eventName}" \u2014 skipping.`);
     }
   } catch (error) {
-    core14.setFailed(
+    core16.setFailed(
       `ai-slop-guard failed: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }
-async function handlePullRequest(octokit, owner, repo, payload, config) {
+async function handlePullRequest(octokit, owner, repo, payload, config, isReanalysis = false) {
   const pr2 = payload["pull_request"];
   if (!pr2) {
-    core14.info("No pull_request in payload \u2014 skipping.");
+    core16.info("No pull_request in payload \u2014 skipping.");
     return;
   }
   const author = String(pr2["user"]?.["login"] ?? "");
   const prNumber = Number(pr2["number"]);
   if (isExempt(author, pr2["labels"], config)) {
-    core14.info(`PR #${prNumber} is exempt \u2014 skipping.`);
+    core16.info(`PR #${prNumber} is exempt \u2014 skipping.`);
     return;
   }
   const { data: diffRaw } = await octokit.rest.pulls.get({
@@ -28224,20 +28601,27 @@ async function handlePullRequest(octokit, owner, repo, payload, config) {
     octokit
   };
   const signals = await runPrPipeline(ctx);
-  const score = calculateSlopScore(signals, config.slopScoreWarn, config.slopScoreClose);
-  core14.info(`PR #${ctx.number}: score=${score.total}, verdict=${score.verdict}, signals=${score.signals.length}`);
-  await dispatchActions(score, ctx);
+  let score = calculateSlopScore(signals, config.slopScoreWarn, config.slopScoreClose);
+  const { score: adjustedScore, multiplier, mergedCount } = await applyContributorMultiplier(score, octokit, owner, repo, author, config);
+  score = adjustedScore;
+  if (multiplier > 1) {
+    core16.info(
+      `PR #${ctx.number}: contributor "${author}" has ${mergedCount} merged PRs \u2014 score multiplied by ${multiplier}`
+    );
+  }
+  core16.info(`PR #${ctx.number}: score=${score.total}, verdict=${score.verdict}, signals=${score.signals.length}`);
+  await dispatchActions(score, ctx, { contributorMultiplier: multiplier, mergedPrCount: mergedCount, isReanalysis });
 }
 async function handleIssue(octokit, owner, repo, payload, config) {
   const issue = payload["issue"];
   if (!issue) {
-    core14.info("No issue in payload \u2014 skipping.");
+    core16.info("No issue in payload \u2014 skipping.");
     return;
   }
   const author = String(issue["user"]?.["login"] ?? "");
   const issueNumber = Number(issue["number"]);
   if (isExempt(author, issue["labels"], config)) {
-    core14.info(`Issue #${issueNumber} is exempt \u2014 skipping.`);
+    core16.info(`Issue #${issueNumber} is exempt \u2014 skipping.`);
     return;
   }
   let repoFiles = [];
@@ -28250,7 +28634,7 @@ async function handleIssue(octokit, owner, repo, payload, config) {
     });
     repoFiles = tree.tree.filter((item) => item.type === "blob").map((item) => item.path ?? "").filter(Boolean);
   } catch {
-    core14.warning("Could not fetch repo file tree.");
+    core16.warning("Could not fetch repo file tree.");
   }
   let existingIssues = [];
   try {
@@ -28266,7 +28650,7 @@ async function handleIssue(octokit, owner, repo, payload, config) {
       body: i2.body ?? ""
     }));
   } catch {
-    core14.warning("Could not fetch existing issues.");
+    core16.warning("Could not fetch existing issues.");
   }
   const rawLabels = issue["labels"];
   const labels = (rawLabels ?? []).map((l2) => typeof l2 === "string" ? l2 : l2.name ?? "").filter(Boolean);
@@ -28295,18 +28679,18 @@ async function handleIssue(octokit, owner, repo, payload, config) {
   };
   const signals = await runIssuePipeline(ctx);
   const score = calculateSlopScore(signals, config.slopScoreWarn, config.slopScoreClose);
-  core14.info(`Issue #${ctx.number}: score=${score.total}, verdict=${score.verdict}, signals=${score.signals.length}`);
+  core16.info(`Issue #${ctx.number}: score=${score.total}, verdict=${score.verdict}, signals=${score.signals.length}`);
   await dispatchActions(score, ctx);
 }
 function isExempt(author, labels, config) {
   const authorLower = author.toLowerCase();
-  if (KNOWN_BOTS.some((b2) => b2.toLowerCase() === authorLower)) return true;
+  if (KNOWN_BOTS2.some((b2) => b2.toLowerCase() === authorLower)) return true;
   if (config.exemptUsers.some((u2) => u2.toLowerCase() === authorLower)) return true;
   if (Array.isArray(labels)) {
     const labelNames = labels.map(
       (l2) => typeof l2 === "string" ? l2 : String(l2?.["name"] ?? "")
     );
-    if (config.exemptLabels.some((exempt) => labelNames.includes(exempt))) {
+    if (config.exemptLabels.some((exempt) => labelNames.some((l2) => l2.toLowerCase() === exempt.toLowerCase()))) {
       return true;
     }
   }
