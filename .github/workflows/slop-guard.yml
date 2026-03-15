@@ -1,0 +1,21 @@
+name: Slop Guard
+
+on:
+  pull_request_target:
+    types: [opened, reopened, edited, synchronize]
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Anti-Ai-Slop/ai-slop-guard@v1
+        with:
+          honeypot-terms: 'PINEAPPLE'
+          grace-period-hours: 24
