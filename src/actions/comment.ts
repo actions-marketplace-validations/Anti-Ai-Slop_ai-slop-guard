@@ -1,4 +1,4 @@
-import type { AnalysisContext, SlopScore, Signal } from '../types';
+import type { AnalysisContext, SlopScore, Signal, DispatchOptions } from '../types';
 
 const COMMENT_SIGNATURE = '<!-- ai-slop-guard-review -->';
 
@@ -72,6 +72,7 @@ const SUGGESTIONS: Readonly<Record<string, string>> = {
 export function buildComment(
   ctx: AnalysisContext,
   score: SlopScore,
+  options: DispatchOptions = {},
 ): string {
   const itemType =
     'eventType' in ctx && ctx.eventType === 'pull_request'
@@ -103,6 +104,10 @@ ${rows}
 
 **Slop Score: ${score.total}** — _${score.verdict}_`;
 
+  if (options.contributorMultiplier && options.contributorMultiplier > 1.0) {
+    body += `\n\n> **Note:** This appears to be your first contribution to this project. The review thresholds are slightly stricter for new contributors.`;
+  }
+
   if (score.verdict === 'suspicious' && suggestions) {
     body += `
 
@@ -131,8 +136,9 @@ This was automatically closed. If this is a mistake, a maintainer can reopen it 
 export async function postComment(
   ctx: AnalysisContext,
   score: SlopScore,
+  options: DispatchOptions = {},
 ): Promise<void> {
-  const body = buildComment(ctx, score);
+  const body = buildComment(ctx, score, options);
 
   const { data: existingComments } = await ctx.octokit.rest.issues.listComments({
     owner: ctx.owner,

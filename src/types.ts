@@ -228,6 +228,12 @@ export interface ActionResult {
   readonly error?: string;
 }
 
+/** Extra options passed through dispatch to comment builder */
+export interface DispatchOptions {
+  readonly contributorMultiplier?: number;
+  readonly mergedPrCount?: number;
+}
+
 /** Complete run result */
 export interface RunResult {
   readonly score: SlopScore;

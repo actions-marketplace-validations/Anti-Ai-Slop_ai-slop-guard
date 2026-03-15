@@ -6,6 +6,7 @@ import { runPrPipeline } from './analyzers/pr-pipeline';
 import { fetchReferencedFileContents } from './utils/github-fetch';
 import { runIssuePipeline } from './analyzers/issue-pipeline';
 import { calculateSlopScore } from './scoring/calculator';
+import { applyContributorMultiplier } from './scoring/contributor';
 import { dispatchActions } from './actions/dispatcher';
 import type {
   PRContext,
@@ -127,9 +128,20 @@ async function handlePullRequest(
   };
 
   const signals = await runPrPipeline(ctx);
-  const score = calculateSlopScore(signals, config.slopScoreWarn, config.slopScoreClose);
+  let score = calculateSlopScore(signals, config.slopScoreWarn, config.slopScoreClose);
+
+  const { score: adjustedScore, multiplier, mergedCount } =
+    await applyContributorMultiplier(score, octokit, owner, repo, author, config);
+  score = adjustedScore;
+
+  if (multiplier > 1.0) {
+    core.info(
+      `PR #${ctx.number}: contributor "${author}" has ${mergedCount} merged PRs — score multiplied by ${multiplier}`,
+    );
+  }
+
   core.info(`PR #${ctx.number}: score=${score.total}, verdict=${score.verdict}, signals=${score.signals.length}`);
-  await dispatchActions(score, ctx);
+  await dispatchActions(score, ctx, { contributorMultiplier: multiplier, mergedPrCount: mergedCount });
 }
 
 async function handleIssue(

@@ -1,5 +1,5 @@
 import * as core from '@actions/core';
-import type { SlopScore, AnalysisContext, ActionType } from '../types';
+import type { SlopScore, AnalysisContext, ActionType, DispatchOptions } from '../types';
 import { addLabel } from './label';
 import { postComment } from './comment';
 import { closeItem } from './close';
@@ -16,6 +16,7 @@ import { setOutputs } from './report';
 export async function dispatchActions(
   score: SlopScore,
   ctx: AnalysisContext,
+  options: DispatchOptions = {},
 ): Promise<ActionType[]> {
   const executed: ActionType[] = [];
 
@@ -49,7 +50,7 @@ export async function dispatchActions(
 
   if (actions.includes('comment')) {
     try {
-      await postComment(ctx, score);
+      await postComment(ctx, score, options);
       executed.push('comment');
     } catch (err) {
       core.warning(`Failed to post comment: ${String(err)}`);
