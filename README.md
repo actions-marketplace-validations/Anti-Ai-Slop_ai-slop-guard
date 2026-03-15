@@ -149,6 +149,16 @@ What you can do:
 
 No accusations. No "AI-generated" language. Just specific, actionable feedback.
 
+## See it in action
+
+We run ai-slop-guard on this repo. Check out these demo PRs to see real results:
+
+| PR | Verdict | What triggered |
+|----|---------|----------------|
+| [#5 — Cosmetic formatting](https://github.com/Anti-Ai-Slop/ai-slop-guard/pull/5) | **likely-slop** (18.69) | honeypot, fluff language, bullet vomit, self-praise, generic commit |
+| [#6 — Retry utility](https://github.com/Anti-Ai-Slop/ai-slop-guard/pull/6) | **suspicious** (8.0) | generic commit, no tests, high comment ratio, missing "why" |
+| [#7 — parsePositiveInt fix](https://github.com/Anti-Ai-Slop/ai-slop-guard/pull/7) | **clean** | Nothing — real fix with test, passes silently |
+
 ## Honeypot setup
 
 Add a hidden comment to your PR template (`.github/pull_request_template.md`):
