@@ -10,6 +10,12 @@
   <a href="https://github.com/Anti-Ai-Slop/ai-slop-guard"><img src="https://img.shields.io/github/stars/Anti-Ai-Slop/ai-slop-guard?style=social" alt="Stars"></a>
 </p>
 
+<div align="center">
+  <br>
+  <img src="docs/demo.gif" alt="ai-slop-guard in action" width="800">
+  <br><br>
+</div>
+
 ---
 
 ## The problem
@@ -18,7 +24,31 @@ Open source maintainers are drowning in AI-generated PRs and issues that add not
 
 We built the filter.
 
-## How it works
+## Quick start
+
+```yaml
+name: Slop Guard
+on:
+  pull_request_target:
+    types: [opened, reopened]
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Anti-Ai-Slop/ai-slop-guard@v1
+```
+
+30 seconds to set up. Default thresholds work for most projects.
+
+## Architecture
 
 ```mermaid
 flowchart TD
@@ -45,30 +75,6 @@ flowchart TD
     style SLOP fill:#da3633,stroke:#da3633,color:#fff
     style H fill:#2d333b,stroke:#f97316,color:#f0f0f0
 ```
-
-## Quick start
-
-```yaml
-name: Slop Guard
-on:
-  pull_request_target:
-    types: [opened, reopened]
-  issues:
-    types: [opened]
-
-permissions:
-  contents: read
-  issues: write
-  pull-requests: write
-
-jobs:
-  guard:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Anti-Ai-Slop/ai-slop-guard@v1
-```
-
-30 seconds to set up. Default thresholds work for most projects.
 
 ## What it catches
 
