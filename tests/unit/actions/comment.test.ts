@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildComment } from '@/actions/comment';
-import { createMockPRContext } from '../../helpers';
+import { createMockPRContext, createDefaultConfig } from '../../helpers';
 import type { SlopScore, Signal } from '@/types';
 
 function makeScore(overrides: Partial<SlopScore> = {}): SlopScore {
@@ -64,6 +64,33 @@ describe('buildComment', () => {
       makeScore({ total: 14, signals, verdict: 'likely-slop' }),
     );
     expect(comment.toLowerCase()).toContain('closed');
+  });
+
+  it('includes grace period note when grace-period-hours > 0 and verdict is likely-slop', () => {
+    const signals: Signal[] = [
+      { id: 'massive-unfocused-diff', category: 'diff-structure', score: 5, confidence: 1.0, detail: 'Huge diff' },
+      { id: 'ai-fluff-language', category: 'description', score: 3, confidence: 1.0, detail: 'Fluff' },
+    ];
+    const graceCtx = createMockPRContext({
+      config: createDefaultConfig({ gracePeriodHours: 48 }),
+    });
+    const comment = buildComment(
+      graceCtx,
+      makeScore({ total: 14, signals, verdict: 'likely-slop' }),
+    );
+    expect(comment).toContain('48 hours');
+    expect(comment).not.toContain('This was automatically closed');
+  });
+
+  it('includes "automatically closed" when grace-period-hours is 0 and verdict is likely-slop', () => {
+    const signals: Signal[] = [
+      { id: 'massive-unfocused-diff', category: 'diff-structure', score: 5, confidence: 1.0, detail: 'Huge diff' },
+    ];
+    const comment = buildComment(
+      ctx,
+      makeScore({ total: 14, signals, verdict: 'likely-slop' }),
+    );
+    expect(comment).toContain('automatically closed');
   });
 
   it('does NOT contain standalone "AI" (only in signal IDs)', () => {

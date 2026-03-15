@@ -23,6 +23,7 @@ function makeCleanScore(): SlopScore {
       'diff-quality': 0,
       description: 0,
       commits: 0,
+      metadata: 0,
       stacktrace: 0,
       duplicate: 0,
       semantic: 0,

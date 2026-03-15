@@ -70,11 +70,24 @@ export async function dispatchActions(
   }
 
   if (actions.includes('close')) {
-    try {
-      await closeItem(ctx);
-      executed.push('close');
-    } catch (err) {
-      core.warning(`Failed to close item: ${String(err)}`);
+    const gracePeriod = ctx.config.gracePeriodHours;
+    if (gracePeriod > 0) {
+      // Grace period: don't close, add pending label instead
+      try {
+        await addLabel(ctx, 'slop-guard-pending-close');
+        core.info(
+          `Grace period active (${gracePeriod}h) — not closing, added pending-close label.`,
+        );
+      } catch (err) {
+        core.warning(`Failed to add pending-close label: ${String(err)}`);
+      }
+    } else {
+      try {
+        await closeItem(ctx);
+        executed.push('close');
+      } catch (err) {
+        core.warning(`Failed to close item: ${String(err)}`);
+      }
     }
   }
 

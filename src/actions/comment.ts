@@ -117,9 +117,17 @@ ${suggestions}
   }
 
   if (score.verdict === 'likely-slop') {
-    body += `
+    const gracePeriod = ctx.config.gracePeriodHours;
+    if (gracePeriod > 0) {
+      body += `
+
+**You have ${gracePeriod} hours to address these issues before this PR is automatically closed.**
+If this is a legitimate contribution, a maintainer can add the \`${ctx.config.exemptLabels[0] ?? 'human-verified'}\` label to bypass.`;
+    } else {
+      body += `
 
 This was automatically closed. If this is a mistake, a maintainer can reopen it and add the \`${ctx.config.exemptLabels[0] ?? 'human-verified'}\` label.`;
+    }
   }
 
   body +=
