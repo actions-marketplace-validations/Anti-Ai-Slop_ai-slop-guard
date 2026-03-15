@@ -136,4 +136,4 @@ Every signal ai-slop-guard can produce, with detailed explanations.
 
 ### `no-functional-value` (score: 4)
 **What:** LLM analysis determines the PR adds no functional value.
-**Requires:** `semantic-analysis: true` and local Ollama instance.
+**Requires:** `semantic-analysis: true` and a configured LLM provider (Ollama, Anthropic, OpenAI, OpenRouter, or custom).

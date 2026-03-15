@@ -110,7 +110,7 @@ This was automatically closed. If this is a mistake, a maintainer can reopen it 
   }
 
   body +=
-    '\n\n---\n<sub>Automated by <a href="https://github.com/anthropics/ai-slop-guard">ai-slop-guard</a></sub>';
+    '\n\n---\n<sub>Automated by <a href="https://github.com/Anti-Ai-Slop/ai-slop-guard">ai-slop-guard</a></sub>';
 
   return body;
 }

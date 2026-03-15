@@ -41,7 +41,7 @@ export class OpenAICompatAdapter implements LLMAdapter {
       headers['Authorization'] = `Bearer ${this.apiKey}`;
     }
     if (this.isOpenRouter) {
-      headers['HTTP-Referer'] = 'https://github.com/anthropics/ai-slop-guard';
+      headers['HTTP-Referer'] = 'https://github.com/Anti-Ai-Slop/ai-slop-guard';
       headers['X-Title'] = 'ai-slop-guard';
     }
 

@@ -239,7 +239,7 @@ function isExempt(
     const labelNames = (labels as unknown[]).map((l) =>
       typeof l === 'string' ? l : String((l as Record<string, unknown>)?.['name'] ?? ''),
     );
-    if (config.exemptLabels.some((exempt) => labelNames.includes(exempt))) {
+    if (config.exemptLabels.some((exempt) => labelNames.some((l) => l.toLowerCase() === exempt.toLowerCase()))) {
       return true;
     }
   }

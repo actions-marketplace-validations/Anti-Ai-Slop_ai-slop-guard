@@ -76,7 +76,7 @@ function checkSingleCommitDump(ctx: PRContext): Signal | null {
 
 function checkAuthorMismatch(ctx: PRContext): Signal | null {
   const mismatchedCommits = ctx.commits.filter(
-    (c) => c.author !== ctx.author,
+    (c) => c.author.toLowerCase() !== ctx.author.toLowerCase(),
   );
 
   if (mismatchedCommits.length === 0) return null;
