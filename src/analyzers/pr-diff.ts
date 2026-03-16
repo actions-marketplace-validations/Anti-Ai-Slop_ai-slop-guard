@@ -164,6 +164,15 @@ function checkImportTsunami(files: readonly DiffFile[]): Signal | null {
   };
 }
 
+/** Top-level package.json keys that are not dependency entries */
+const PKG_NON_DEP_KEYS = new Set([
+  'name', 'version', 'description', 'main', 'module', 'types', 'typings',
+  'type', 'exports', 'bin', 'files', 'man', 'directories', 'scripts',
+  'keywords', 'author', 'license', 'repository', 'bugs', 'homepage',
+  'engines', 'private', 'publishConfig', 'workspaces', 'sideEffects',
+  'browserslist', 'funding', 'os', 'cpu',
+]);
+
 function checkSuspiciousDependency(files: readonly DiffFile[]): Signal | null {
   const pkgFile = files.find(
     (f) => f.newPath === 'package.json' || f.oldPath === 'package.json',
@@ -175,7 +184,11 @@ function checkSuspiciousDependency(files: readonly DiffFile[]): Signal | null {
 
   for (const line of pkgFile.additions) {
     const match = line.content.match(depPattern);
-    if (match?.[1] && !match[1].startsWith('@types/')) {
+    if (
+      match?.[1] &&
+      !match[1].startsWith('@types/') &&
+      !PKG_NON_DEP_KEYS.has(match[1])
+    ) {
       addedDeps.push(match[1]);
     }
   }
