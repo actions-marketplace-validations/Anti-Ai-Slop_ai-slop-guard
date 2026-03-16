@@ -17598,12 +17598,12 @@ var require_lib = __commonJS({
             throw new Error("Client has already been disposed.");
           }
           const parsedUrl = new URL(requestUrl);
-          let info4 = this._prepareRequest(verb, parsedUrl, headers);
+          let info5 = this._prepareRequest(verb, parsedUrl, headers);
           const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb) ? this._maxRetries + 1 : 1;
           let numTries = 0;
           let response;
           do {
-            response = yield this.requestRaw(info4, data);
+            response = yield this.requestRaw(info5, data);
             if (response && response.message && response.message.statusCode === HttpCodes.Unauthorized) {
               let authenticationHandler;
               for (const handler2 of this.handlers) {
@@ -17613,7 +17613,7 @@ var require_lib = __commonJS({
                 }
               }
               if (authenticationHandler) {
-                return authenticationHandler.handleAuthentication(this, info4, data);
+                return authenticationHandler.handleAuthentication(this, info5, data);
               } else {
                 return response;
               }
@@ -17636,8 +17636,8 @@ var require_lib = __commonJS({
                   }
                 }
               }
-              info4 = this._prepareRequest(verb, parsedRedirectUrl, headers);
-              response = yield this.requestRaw(info4, data);
+              info5 = this._prepareRequest(verb, parsedRedirectUrl, headers);
+              response = yield this.requestRaw(info5, data);
               redirectsRemaining--;
             }
             if (!response.message.statusCode || !HttpResponseRetryCodes.includes(response.message.statusCode)) {
@@ -17666,7 +17666,7 @@ var require_lib = __commonJS({
        * @param info
        * @param data
        */
-      requestRaw(info4, data) {
+      requestRaw(info5, data) {
         return __awaiter2(this, void 0, void 0, function* () {
           return new Promise((resolve, reject) => {
             function callbackForResult(err2, res) {
@@ -17678,7 +17678,7 @@ var require_lib = __commonJS({
                 resolve(res);
               }
             }
-            this.requestRawWithCallback(info4, data, callbackForResult);
+            this.requestRawWithCallback(info5, data, callbackForResult);
           });
         });
       }
@@ -17688,12 +17688,12 @@ var require_lib = __commonJS({
        * @param data
        * @param onResult
        */
-      requestRawWithCallback(info4, data, onResult) {
+      requestRawWithCallback(info5, data, onResult) {
         if (typeof data === "string") {
-          if (!info4.options.headers) {
-            info4.options.headers = {};
+          if (!info5.options.headers) {
+            info5.options.headers = {};
           }
-          info4.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
+          info5.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
         }
         let callbackCalled = false;
         function handleResult(err2, res) {
@@ -17702,7 +17702,7 @@ var require_lib = __commonJS({
             onResult(err2, res);
           }
         }
-        const req = info4.httpModule.request(info4.options, (msg) => {
+        const req = info5.httpModule.request(info5.options, (msg) => {
           const res = new HttpClientResponse(msg);
           handleResult(void 0, res);
         });
@@ -17714,7 +17714,7 @@ var require_lib = __commonJS({
           if (socket) {
             socket.end();
           }
-          handleResult(new Error(`Request timeout: ${info4.options.path}`));
+          handleResult(new Error(`Request timeout: ${info5.options.path}`));
         });
         req.on("error", function(err2) {
           handleResult(err2);
@@ -17750,27 +17750,27 @@ var require_lib = __commonJS({
         return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
       }
       _prepareRequest(method, requestUrl, headers) {
-        const info4 = {};
-        info4.parsedUrl = requestUrl;
-        const usingSsl = info4.parsedUrl.protocol === "https:";
-        info4.httpModule = usingSsl ? https : http;
+        const info5 = {};
+        info5.parsedUrl = requestUrl;
+        const usingSsl = info5.parsedUrl.protocol === "https:";
+        info5.httpModule = usingSsl ? https : http;
         const defaultPort = usingSsl ? 443 : 80;
-        info4.options = {};
-        info4.options.host = info4.parsedUrl.hostname;
-        info4.options.port = info4.parsedUrl.port ? parseInt(info4.parsedUrl.port) : defaultPort;
-        info4.options.path = (info4.parsedUrl.pathname || "") + (info4.parsedUrl.search || "");
-        info4.options.method = method;
-        info4.options.headers = this._mergeHeaders(headers);
+        info5.options = {};
+        info5.options.host = info5.parsedUrl.hostname;
+        info5.options.port = info5.parsedUrl.port ? parseInt(info5.parsedUrl.port) : defaultPort;
+        info5.options.path = (info5.parsedUrl.pathname || "") + (info5.parsedUrl.search || "");
+        info5.options.method = method;
+        info5.options.headers = this._mergeHeaders(headers);
         if (this.userAgent != null) {
-          info4.options.headers["user-agent"] = this.userAgent;
+          info5.options.headers["user-agent"] = this.userAgent;
         }
-        info4.options.agent = this._getAgent(info4.parsedUrl);
+        info5.options.agent = this._getAgent(info5.parsedUrl);
         if (this.handlers) {
           for (const handler2 of this.handlers) {
-            handler2.prepareRequest(info4.options);
+            handler2.prepareRequest(info5.options);
           }
         }
-        return info4;
+        return info5;
       }
       _mergeHeaders(headers) {
         if (this.requestOptions && this.requestOptions.headers) {
@@ -19760,10 +19760,10 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       (0, command_1.issueCommand)("notice", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
     exports2.notice = notice;
-    function info4(message) {
+    function info5(message) {
       process.stdout.write(message + os.EOL);
     }
-    exports2.info = info4;
+    exports2.info = info5;
     function startGroup(name) {
       (0, command_1.issue)("group", name);
     }
@@ -24489,7 +24489,15 @@ function resolveConfig() {
     gracePeriodHours: parsePositiveInt(
       core.getInput("grace-period-hours"),
       0
-    )
+    ),
+    trustedUsers: parseCommaSeparated(core.getInput("trusted-users")),
+    blockedUsers: parseCommaSeparated(core.getInput("blocked-users")),
+    excludeCollaborators: core.getInput("exclude-collaborators") !== "false",
+    repeatOffenderThreshold: parsePositiveInt(
+      core.getInput("repeat-offender-threshold"),
+      3
+    ),
+    repeatOffenderMultiplier: parseFloat(core.getInput("repeat-offender-multiplier") || "2.0") || 2
   };
   if (config.slopScoreWarn >= config.slopScoreClose) {
     return err(
@@ -28199,55 +28207,107 @@ var KNOWN_BOTS = [
   "snyk-bot",
   "greenkeeper[bot]"
 ];
+function resolveVerdict(total, config) {
+  if (total >= config.slopScoreClose) return "likely-slop";
+  if (total >= config.slopScoreWarn) return "suspicious";
+  return "clean";
+}
+function applyMultiplier(score, multiplier, config, extra) {
+  if (multiplier === 1) {
+    return { score, multiplier, mergedCount: extra.mergedCount ?? -1, options: extra.options };
+  }
+  const newTotal = Math.round(score.total * multiplier * 100) / 100;
+  return {
+    score: { ...score, total: newTotal, verdict: resolveVerdict(newTotal, config) },
+    multiplier,
+    mergedCount: extra.mergedCount ?? -1,
+    options: extra.options
+  };
+}
+function matchesUser(list, author) {
+  const lower = author.toLowerCase();
+  return list.some((u2) => u2.toLowerCase() === lower);
+}
+async function checkCollaborator(octokit, owner, repo, author) {
+  try {
+    await octokit.rest.repos.checkCollaborator({ owner, repo, username: author });
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function countPastSlopClosures(octokit, owner, repo, author, slopLabel) {
+  try {
+    const { data } = await octokit.rest.search.issuesAndPullRequests({
+      q: `repo:${owner}/${repo} author:${author} label:"${slopLabel}" is:closed`,
+      per_page: 1
+    });
+    return data.total_count;
+  } catch (err2) {
+    core13.debug(`Repeat offender check failed: ${String(err2)}`);
+    return 0;
+  }
+}
+async function countMergedPRs(octokit, owner, repo, author) {
+  const { data: pulls } = await octokit.rest.pulls.list({
+    owner,
+    repo,
+    state: "closed",
+    sort: "updated",
+    direction: "desc",
+    per_page: 100
+  });
+  return pulls.filter(
+    (p2) => p2.user?.login?.toLowerCase() === author.toLowerCase() && p2.merged_at !== null
+  ).length;
+}
 async function applyContributorMultiplier(score, octokit, owner, repo, author, config) {
-  if (!config.contributorHistoryCheck) {
-    return { score, multiplier: 1, mergedCount: -1 };
+  const skip = { score, multiplier: 1, mergedCount: -1, options: {} };
+  if (matchesUser(config.blockedUsers, author)) {
+    return {
+      score: { ...score, total: 99, verdict: "likely-slop" },
+      multiplier: 99,
+      mergedCount: -1,
+      options: { isBlockedUser: true }
+    };
   }
-  if (KNOWN_BOTS.some((b2) => b2.toLowerCase() === author.toLowerCase())) {
-    return { score, multiplier: 1, mergedCount: -1 };
+  if (!config.contributorHistoryCheck) return skip;
+  if (matchesUser(KNOWN_BOTS, author)) return skip;
+  if (matchesUser(config.exemptUsers, author)) return skip;
+  if (matchesUser(config.trustedUsers, author)) {
+    return applyMultiplier(score, 0.5, config, { options: { isTrustedUser: true } });
   }
-  if (config.exemptUsers.some((u2) => u2.toLowerCase() === author.toLowerCase())) {
-    return { score, multiplier: 1, mergedCount: -1 };
+  if (config.excludeCollaborators && await checkCollaborator(octokit, owner, repo, author)) {
+    core13.info(`"${author}" is a repo collaborator \u2014 skipping analysis.`);
+    return { ...skip, options: { isCollaborator: true } };
+  }
+  let pastSlopCount = 0;
+  let isRepeatOffender = false;
+  if (config.repeatOffenderThreshold > 0) {
+    pastSlopCount = await countPastSlopClosures(octokit, owner, repo, author, config.slopLabel);
+    if (pastSlopCount >= config.repeatOffenderThreshold) {
+      isRepeatOffender = true;
+      core13.info(`"${author}" has ${pastSlopCount} past slop closures \u2014 score multiplied by ${config.repeatOffenderMultiplier}`);
+      return applyMultiplier(score, config.repeatOffenderMultiplier, config, {
+        options: { isRepeatOffender, pastSlopCount }
+      });
+    }
   }
   let mergedCount;
   try {
-    const { data: pulls } = await octokit.rest.pulls.list({
-      owner,
-      repo,
-      state: "closed",
-      sort: "updated",
-      direction: "desc",
-      per_page: 100
-    });
-    mergedCount = pulls.filter(
-      (p2) => p2.user?.login?.toLowerCase() === author.toLowerCase() && p2.merged_at !== null
-    ).length;
+    mergedCount = await countMergedPRs(octokit, owner, repo, author);
   } catch (err2) {
     core13.debug(`Contributor history check failed: ${String(err2)}`);
-    return { score, multiplier: 1, mergedCount: -1 };
+    return { ...skip, options: { pastSlopCount, isRepeatOffender } };
   }
   let multiplier;
-  if (mergedCount === 0) {
-    multiplier = config.newContributorWeightMultiplier;
-  } else if (mergedCount <= 2) {
-    multiplier = 1.25;
-  } else {
-    multiplier = 1;
-  }
-  if (multiplier === 1) {
-    return { score, multiplier, mergedCount };
-  }
-  const newTotal = Math.round(score.total * multiplier * 100) / 100;
-  const warnThreshold = config.slopScoreWarn;
-  const closeThreshold = config.slopScoreClose;
-  let verdict = "clean";
-  if (newTotal >= closeThreshold) verdict = "likely-slop";
-  else if (newTotal >= warnThreshold) verdict = "suspicious";
-  return {
-    score: { ...score, total: newTotal, verdict },
-    multiplier,
-    mergedCount
-  };
+  if (mergedCount === 0) multiplier = config.newContributorWeightMultiplier;
+  else if (mergedCount <= 2) multiplier = 1.25;
+  else multiplier = 1;
+  return applyMultiplier(score, multiplier, config, {
+    mergedCount,
+    options: { pastSlopCount, isRepeatOffender }
+  });
 }
 
 // src/actions/dispatcher.ts
@@ -28339,10 +28399,22 @@ This ${itemType} was automatically flagged for review. Here's what we found:
 ${rows}
 
 **Slop Score: ${score.total}** \u2014 _${score.verdict}_`;
-  if (options.contributorMultiplier && options.contributorMultiplier > 1) {
+  if (options.isBlockedUser) {
+    body += `
+
+> **This user is on the blocked list.** This ${itemType} was automatically closed.`;
+  } else if (options.isRepeatOffender && options.pastSlopCount) {
+    body += `
+
+> **Repeat offender:** This user has had ${options.pastSlopCount} previous ${itemType === "PR" ? "PRs" : "issues"} closed as slop. Score multiplier escalated.`;
+  } else if (options.contributorMultiplier && options.contributorMultiplier > 1) {
     body += `
 
 > **Note:** This appears to be your first contribution to this project. The review thresholds are slightly stricter for new contributors.`;
+  } else if (options.isTrustedUser) {
+    body += `
+
+> **Note:** This user is on the trusted list. Thresholds are more lenient.`;
   }
   if (score.verdict === "suspicious" && suggestions) {
     body += `
@@ -28602,15 +28674,24 @@ async function handlePullRequest(octokit, owner, repo, payload, config, isReanal
   };
   const signals = await runPrPipeline(ctx);
   let score = calculateSlopScore(signals, config.slopScoreWarn, config.slopScoreClose);
-  const { score: adjustedScore, multiplier, mergedCount } = await applyContributorMultiplier(score, octokit, owner, repo, author, config);
-  score = adjustedScore;
-  if (multiplier > 1) {
+  const contributorResult = await applyContributorMultiplier(score, octokit, owner, repo, author, config);
+  score = contributorResult.score;
+  if (contributorResult.options.isCollaborator) {
+    core16.info(`PR #${ctx.number}: "${author}" is a collaborator \u2014 skipping.`);
+    return;
+  }
+  if (contributorResult.multiplier > 1 && contributorResult.multiplier < 99) {
     core16.info(
-      `PR #${ctx.number}: contributor "${author}" has ${mergedCount} merged PRs \u2014 score multiplied by ${multiplier}`
+      `PR #${ctx.number}: contributor "${author}" \u2014 score multiplied by ${contributorResult.multiplier}`
     );
   }
   core16.info(`PR #${ctx.number}: score=${score.total}, verdict=${score.verdict}, signals=${score.signals.length}`);
-  await dispatchActions(score, ctx, { contributorMultiplier: multiplier, mergedPrCount: mergedCount, isReanalysis });
+  await dispatchActions(score, ctx, {
+    contributorMultiplier: contributorResult.multiplier,
+    mergedPrCount: contributorResult.mergedCount,
+    isReanalysis,
+    ...contributorResult.options
+  });
 }
 async function handleIssue(octokit, owner, repo, payload, config) {
   const issue = payload["issue"];
