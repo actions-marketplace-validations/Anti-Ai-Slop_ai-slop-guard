@@ -104,8 +104,14 @@ ${rows}
 
 **Slop Score: ${score.total}** — _${score.verdict}_`;
 
-  if (options.contributorMultiplier && options.contributorMultiplier > 1.0) {
+  if (options.isBlockedUser) {
+    body += `\n\n> **This user is on the blocked list.** This ${itemType} was automatically closed.`;
+  } else if (options.isRepeatOffender && options.pastSlopCount) {
+    body += `\n\n> **Repeat offender:** This user has had ${options.pastSlopCount} previous ${itemType === 'PR' ? 'PRs' : 'issues'} closed as slop. Score multiplier escalated.`;
+  } else if (options.contributorMultiplier && options.contributorMultiplier > 1.0) {
     body += `\n\n> **Note:** This appears to be your first contribution to this project. The review thresholds are slightly stricter for new contributors.`;
+  } else if (options.isTrustedUser) {
+    body += `\n\n> **Note:** This user is on the trusted list. Thresholds are more lenient.`;
   }
 
   if (score.verdict === 'suspicious' && suggestions) {
