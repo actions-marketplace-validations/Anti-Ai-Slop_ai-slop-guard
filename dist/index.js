@@ -25374,6 +25374,37 @@ function checkImportTsunami(files) {
     evidence: importNames.slice(0, 3).join(", ")
   };
 }
+var PKG_NON_DEP_KEYS = /* @__PURE__ */ new Set([
+  "name",
+  "version",
+  "description",
+  "main",
+  "module",
+  "types",
+  "typings",
+  "type",
+  "exports",
+  "bin",
+  "files",
+  "man",
+  "directories",
+  "scripts",
+  "keywords",
+  "author",
+  "license",
+  "repository",
+  "bugs",
+  "homepage",
+  "engines",
+  "private",
+  "publishConfig",
+  "workspaces",
+  "sideEffects",
+  "browserslist",
+  "funding",
+  "os",
+  "cpu"
+]);
 function checkSuspiciousDependency(files) {
   const pkgFile = files.find(
     (f2) => f2.newPath === "package.json" || f2.oldPath === "package.json"
@@ -25383,7 +25414,7 @@ function checkSuspiciousDependency(files) {
   const addedDeps = [];
   for (const line of pkgFile.additions) {
     const match = line.content.match(depPattern);
-    if (match?.[1] && !match[1].startsWith("@types/")) {
+    if (match?.[1] && !match[1].startsWith("@types/") && !PKG_NON_DEP_KEYS.has(match[1])) {
       addedDeps.push(match[1]);
     }
   }
