@@ -19,7 +19,15 @@
 
 ---
 
-## What's new in v0.2
+## What's new in v0.3
+
+- **Blocked users** — Auto-close PRs/issues from specific usernames. No analysis, just shut the door.
+- **Trusted users** — Known good contributors get a 0.5x score multiplier. Still analyzed, higher bar to flag.
+- **Collaborator exclusion** — Repo collaborators added by the owner skip analysis entirely. On by default.
+- **Repeat offender escalation** — Users with 3+ past slop closures get a 2.0x multiplier. Stateless, queries the search API.
+- **Dependency false positive fix** — `suspicious-dependency` no longer flags `version`, `name`, and other non-dep package.json fields.
+
+## What was new in v0.2
 
 - **Honeypot detection** — Hidden trap words in PR templates catch bots that read raw markdown. Score: 5.
 - **Source branch blocking** — PRs from `main`/`master` flagged automatically. Score: 4.
@@ -28,8 +36,7 @@
 - **Contributor history** — New contributors (0 merged PRs) get stricter scoring (1.5x multiplier).
 - **PR edit support** — Re-analyzes on `edited`/`reopened`/`synchronize` and updates the existing comment.
 - **Grace period** — Optionally delay auto-close to give contributors time to fix issues.
-- **Badge** — Add a shields.io badge to your README.
-- Total: **32 signals** across 8 categories (was 28 across 7).
+- Total: **32 signals** across 8 categories.
 
 ## The problem
 
@@ -65,27 +72,36 @@ jobs:
 
 ```mermaid
 flowchart TD
-    A["PR or Issue opened"] --> B{"Exempt?"}
+    A["PR or Issue opened"] --> BL{"Blocked user?"}
+    BL -- "Yes" --> BLOCK["Auto-close"]
+    BL -- "No" --> B{"Exempt?"}
     B -- "Bot / exempt user / label" --> SKIP["Skip"]
-    B -- "No" --> D["Analyze content"]
+    B -- "No" --> TR{"Trusted / Collaborator?"}
+    TR -- "Trusted" --> TA["Analyze with 0.5x multiplier"]
+    TR -- "Collaborator" --> SKIP
+    TR -- "No" --> D["Analyze content"]
 
+    TA --> H
     D --> E["Diff parser"]
     D --> F["Text patterns"]
     D --> G["Stack trace validator"]
     D --> M["Metadata checks"]
 
-    E & F & G & M --> H["32 deterministic checks — no AI required"]
+    E & F & G & M --> H["32 deterministic checks"]
     H --> S["Score = sum of score x confidence"]
-    S --> CM{"New contributor?"}
+    S --> RO{"Repeat offender?"}
+    RO -- "3+ past closures" --> ROM["Score x 2.0"]
+    RO -- "No" --> CM{"New contributor?"}
     CM -- "0 merged PRs" --> MUL["Score x 1.5"]
     CM -- "3+ merged PRs" --> NOM["No multiplier"]
-    MUL & NOM --> V{"Verdict"}
+    ROM & MUL & NOM --> V{"Verdict"}
 
-    V -- "< 6" --> CLEAN["Clean — nothing happens"]
+    V -- "< 6" --> CLEAN["Clean"]
     V -- "6 to 11" --> WARN["Suspicious — label + comment"]
     V -- "≥ 12" --> SLOP["Likely slop — label + close"]
 
     style A fill:#2d333b,stroke:#f97316,color:#f0f0f0
+    style BLOCK fill:#da3633,stroke:#da3633,color:#fff
     style SKIP fill:#238636,stroke:#238636,color:#fff
     style CLEAN fill:#238636,stroke:#238636,color:#fff
     style WARN fill:#d29922,stroke:#d29922,color:#fff
@@ -211,6 +227,11 @@ This adds 1 check out of 32. The other 31 work without any AI.
 | `contributor-history-check` | `true` | Stricter scoring for new contributors |
 | `new-contributor-weight-multiplier` | `1.5` | Score multiplier for first-time contributors |
 | `grace-period-hours` | `0` | Hours before auto-close (0 = immediate) |
+| `trusted-users` | `""` | Users analyzed with reduced multiplier (0.5x) |
+| `blocked-users` | `""` | Users auto-closed immediately |
+| `exclude-collaborators` | `true` | Skip analysis for repo collaborators |
+| `repeat-offender-threshold` | `3` | Past slop closures before escalating |
+| `repeat-offender-multiplier` | `2.0` | Score multiplier for repeat offenders |
 
 [Full configuration reference →](docs/checks.md)
 
