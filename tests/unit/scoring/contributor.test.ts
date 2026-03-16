@@ -22,17 +22,29 @@ function makeScore(total: number, verdict: 'clean' | 'suspicious' | 'likely-slop
   };
 }
 
-function mockOctokit(pulls: Array<{ user: { login: string }; merged_at: string | null }>): OctokitClient {
+function mockOctokit(
+  pulls: Array<{ user: { login: string }; merged_at: string | null }> = [],
+  overrides: Record<string, unknown> = {},
+): OctokitClient {
   return {
     rest: {
       pulls: {
         list: vi.fn().mockResolvedValue({ data: pulls }),
       },
+      repos: {
+        checkCollaborator: vi.fn().mockRejectedValue(new Error('404')),
+      },
+      search: {
+        issuesAndPullRequests: vi.fn().mockResolvedValue({ data: { total_count: 0 } }),
+      },
+      ...overrides,
     },
   } as unknown as OctokitClient;
 }
 
 describe('applyContributorMultiplier', () => {
+  // ── Existing behavior ──────────────────────────────────────────────
+
   it('should multiply score by 1.5 for users with 0 merged PRs', async () => {
     const score = makeScore(8, 'suspicious');
     const octo = mockOctokit([]);
@@ -83,6 +95,12 @@ describe('applyContributorMultiplier', () => {
         pulls: {
           list: vi.fn().mockRejectedValue(new Error('rate limit')),
         },
+        repos: {
+          checkCollaborator: vi.fn().mockRejectedValue(new Error('404')),
+        },
+        search: {
+          issuesAndPullRequests: vi.fn().mockResolvedValue({ data: { total_count: 0 } }),
+        },
       },
     } as unknown as OctokitClient;
     const config = createDefaultConfig();
@@ -120,5 +138,157 @@ describe('applyContributorMultiplier', () => {
     // 8 * 1.5 = 12 → likely-slop
     expect(result.score.total).toBe(12);
     expect(result.score.verdict).toBe('likely-slop');
+  });
+
+  // ── Blocked users ──────────────────────────────────────────────────
+
+  it('should auto-flag blocked users with score 99', async () => {
+    const score = makeScore(4, 'clean');
+    const octo = mockOctokit([]);
+    const config = createDefaultConfig({ blockedUsers: ['spammer'] });
+    const result = await applyContributorMultiplier(score, octo, 'owner', 'repo', 'spammer', config);
+
+    expect(result.score.total).toBe(99);
+    expect(result.score.verdict).toBe('likely-slop');
+    expect(result.options.isBlockedUser).toBe(true);
+  });
+
+  it('should match blocked users case-insensitively', async () => {
+    const score = makeScore(4, 'clean');
+    const octo = mockOctokit([]);
+    const config = createDefaultConfig({ blockedUsers: ['Spammer'] });
+    const result = await applyContributorMultiplier(score, octo, 'owner', 'repo', 'SPAMMER', config);
+
+    expect(result.options.isBlockedUser).toBe(true);
+  });
+
+  // ── Trusted users ──────────────────────────────────────────────────
+
+  it('should apply 0.5x multiplier for trusted users', async () => {
+    const score = makeScore(10, 'suspicious');
+    const octo = mockOctokit([]);
+    const config = createDefaultConfig({ trustedUsers: ['friend'] });
+    const result = await applyContributorMultiplier(score, octo, 'owner', 'repo', 'friend', config);
+
+    expect(result.multiplier).toBe(0.5);
+    expect(result.score.total).toBe(5);
+    expect(result.score.verdict).toBe('clean');
+    expect(result.options.isTrustedUser).toBe(true);
+  });
+
+  it('should match trusted users case-insensitively', async () => {
+    const score = makeScore(10, 'suspicious');
+    const octo = mockOctokit([]);
+    const config = createDefaultConfig({ trustedUsers: ['Friend'] });
+    const result = await applyContributorMultiplier(score, octo, 'owner', 'repo', 'FRIEND', config);
+
+    expect(result.options.isTrustedUser).toBe(true);
+  });
+
+  // ── Collaborator exclusion ─────────────────────────────────────────
+
+  it('should skip analysis for repo collaborators when enabled', async () => {
+    const score = makeScore(10, 'suspicious');
+    const octo = mockOctokit([], {
+      repos: {
+        checkCollaborator: vi.fn().mockResolvedValue({ status: 204 }),
+      },
+    });
+    const config = createDefaultConfig({ excludeCollaborators: true });
+    const result = await applyContributorMultiplier(score, octo, 'owner', 'repo', 'teammate', config);
+
+    expect(result.multiplier).toBe(1.0);
+    expect(result.options.isCollaborator).toBe(true);
+    expect(result.score.total).toBe(10); // score unchanged, caller skips dispatch
+  });
+
+  it('should not skip collaborators when exclude-collaborators is false', async () => {
+    const score = makeScore(8, 'suspicious');
+    const octo = mockOctokit([], {
+      repos: {
+        checkCollaborator: vi.fn().mockResolvedValue({ status: 204 }),
+      },
+    });
+    const config = createDefaultConfig({ excludeCollaborators: false });
+    const result = await applyContributorMultiplier(score, octo, 'owner', 'repo', 'teammate', config);
+
+    // Should proceed to merged PR check, not skip
+    expect(result.options.isCollaborator).toBeUndefined();
+  });
+
+  it('should not skip non-collaborators', async () => {
+    const score = makeScore(8, 'suspicious');
+    const octo = mockOctokit([]); // default mock rejects checkCollaborator → not a collaborator
+    const config = createDefaultConfig({ excludeCollaborators: true });
+    const result = await applyContributorMultiplier(score, octo, 'owner', 'repo', 'outsider', config);
+
+    // Should proceed to merged PR check
+    expect(result.options.isCollaborator).toBeUndefined();
+    expect(result.multiplier).toBe(1.5); // new contributor
+  });
+
+  // ── Repeat offenders ───────────────────────────────────────────────
+
+  it('should escalate multiplier for repeat offenders', async () => {
+    const score = makeScore(8, 'suspicious');
+    const octo = mockOctokit([], {
+      search: {
+        issuesAndPullRequests: vi.fn().mockResolvedValue({ data: { total_count: 5 } }),
+      },
+    });
+    const config = createDefaultConfig({
+      repeatOffenderThreshold: 3,
+      repeatOffenderMultiplier: 2.0,
+    });
+    const result = await applyContributorMultiplier(score, octo, 'owner', 'repo', 'recidivist', config);
+
+    expect(result.multiplier).toBe(2.0);
+    expect(result.score.total).toBe(16);
+    expect(result.score.verdict).toBe('likely-slop');
+    expect(result.options.isRepeatOffender).toBe(true);
+    expect(result.options.pastSlopCount).toBe(5);
+  });
+
+  it('should not escalate when below repeat offender threshold', async () => {
+    const score = makeScore(8, 'suspicious');
+    const octo = mockOctokit([], {
+      search: {
+        issuesAndPullRequests: vi.fn().mockResolvedValue({ data: { total_count: 1 } }),
+      },
+    });
+    const config = createDefaultConfig({ repeatOffenderThreshold: 3 });
+    const result = await applyContributorMultiplier(score, octo, 'owner', 'repo', 'newuser', config);
+
+    expect(result.options.isRepeatOffender).toBe(false);
+    // Falls through to new contributor check (0 merged PRs → 1.5x)
+    expect(result.multiplier).toBe(1.5);
+  });
+
+  // ── Priority order ─────────────────────────────────────────────────
+
+  it('blocked takes priority over trusted', async () => {
+    const score = makeScore(4, 'clean');
+    const octo = mockOctokit([]);
+    const config = createDefaultConfig({
+      blockedUsers: ['dual'],
+      trustedUsers: ['dual'],
+    });
+    const result = await applyContributorMultiplier(score, octo, 'owner', 'repo', 'dual', config);
+
+    expect(result.options.isBlockedUser).toBe(true);
+  });
+
+  it('trusted takes priority over collaborator check', async () => {
+    const score = makeScore(10, 'suspicious');
+    const octo = mockOctokit([], {
+      repos: {
+        checkCollaborator: vi.fn().mockResolvedValue({ status: 204 }),
+      },
+    });
+    const config = createDefaultConfig({ trustedUsers: ['friend'] });
+    const result = await applyContributorMultiplier(score, octo, 'owner', 'repo', 'friend', config);
+
+    expect(result.options.isTrustedUser).toBe(true);
+    expect(result.multiplier).toBe(0.5);
   });
 });
