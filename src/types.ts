@@ -174,6 +174,11 @@ export interface GuardConfig {
   readonly contributorHistoryCheck: boolean;
   readonly newContributorWeightMultiplier: number;
   readonly gracePeriodHours: number;
+  readonly trustedUsers: readonly string[];
+  readonly blockedUsers: readonly string[];
+  readonly excludeCollaborators: boolean;
+  readonly repeatOffenderThreshold: number;
+  readonly repeatOffenderMultiplier: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -233,6 +238,11 @@ export interface DispatchOptions {
   readonly contributorMultiplier?: number;
   readonly mergedPrCount?: number;
   readonly isReanalysis?: boolean;
+  readonly isRepeatOffender?: boolean;
+  readonly pastSlopCount?: number;
+  readonly isCollaborator?: boolean;
+  readonly isTrustedUser?: boolean;
+  readonly isBlockedUser?: boolean;
 }
 
 /** Complete run result */

@@ -109,6 +109,16 @@ export function resolveConfig(): Result<GuardConfig, string> {
       core.getInput('grace-period-hours'),
       0,
     ),
+    trustedUsers: parseCommaSeparated(core.getInput('trusted-users')),
+    blockedUsers: parseCommaSeparated(core.getInput('blocked-users')),
+    excludeCollaborators:
+      core.getInput('exclude-collaborators') !== 'false',
+    repeatOffenderThreshold: parsePositiveInt(
+      core.getInput('repeat-offender-threshold'),
+      3,
+    ),
+    repeatOffenderMultiplier:
+      parseFloat(core.getInput('repeat-offender-multiplier') || '2.0') || 2.0,
   };
 
   if (config.slopScoreWarn >= config.slopScoreClose) {
