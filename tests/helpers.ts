@@ -41,6 +41,11 @@ export function createDefaultConfig(
     contributorHistoryCheck: true,
     newContributorWeightMultiplier: 1.5,
     gracePeriodHours: 0,
+    trustedUsers: [],
+    blockedUsers: [],
+    excludeCollaborators: true,
+    repeatOffenderThreshold: 3,
+    repeatOffenderMultiplier: 2.0,
     ...overrides,
   };
 }

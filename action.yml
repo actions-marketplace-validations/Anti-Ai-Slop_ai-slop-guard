@@ -115,6 +115,26 @@ inputs:
     description: 'Hours to wait before auto-closing (0 = close immediately)'
     required: false
     default: '0'
+  trusted-users:
+    description: 'Comma-separated list of trusted usernames (analyzed with reduced multiplier instead of skipped entirely)'
+    required: false
+    default: ''
+  blocked-users:
+    description: 'Comma-separated list of blocked usernames (PRs/issues auto-closed immediately)'
+    required: false
+    default: ''
+  exclude-collaborators:
+    description: 'Skip analysis for repo collaborators added by the owner'
+    required: false
+    default: 'true'
+  repeat-offender-threshold:
+    description: 'Number of past slop closures before escalating score multiplier'
+    required: false
+    default: '3'
+  repeat-offender-multiplier:
+    description: 'Score multiplier applied to repeat offenders who exceed the threshold'
+    required: false
+    default: '2.0'
 
 outputs:
   slop-score:

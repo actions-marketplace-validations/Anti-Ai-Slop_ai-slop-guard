@@ -234,6 +234,49 @@ describe('analyzePrDiff', () => {
     });
   });
 
+  describe('suspicious-dependency', () => {
+    it('should NOT flag version bumps or other non-dep package.json fields', async () => {
+      const ctx = createMockPRContext({
+        diff: createEmptyDiff({
+          files: [
+            createDiffFile({
+              oldPath: 'package.json',
+              newPath: 'package.json',
+              status: 'modified',
+              isConfig: true,
+              isTest: false,
+              additions: [
+                { lineNumber: 3, content: '  "version": "0.3.0",' },
+              ],
+              deletions: [
+                { lineNumber: 3, content: '  "version": "0.2.0",' },
+              ],
+            }),
+            createDiffFile({
+              oldPath: 'src/index.ts',
+              newPath: 'src/index.ts',
+              status: 'modified',
+              isConfig: false,
+              isTest: false,
+              additions: [
+                { lineNumber: 1, content: 'console.log("hello");' },
+              ],
+              deletions: [],
+            }),
+          ],
+          totalAdditions: 2,
+          totalDeletions: 1,
+          totalFilesChanged: 2,
+        }),
+      });
+
+      const signals = await analyzePrDiff(ctx);
+      const signal = signals.find((s) => s.id === 'suspicious-dependency');
+
+      expect(signal).toBeUndefined();
+    });
+  });
+
   describe('config-churn', () => {
     it('should flag when only config files are changed', async () => {
       const ctx = createMockPRContext({

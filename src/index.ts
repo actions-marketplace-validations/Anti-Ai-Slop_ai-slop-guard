@@ -134,18 +134,29 @@ async function handlePullRequest(
   const signals = await runPrPipeline(ctx);
   let score = calculateSlopScore(signals, config.slopScoreWarn, config.slopScoreClose);
 
-  const { score: adjustedScore, multiplier, mergedCount } =
+  const contributorResult =
     await applyContributorMultiplier(score, octokit, owner, repo, author, config);
-  score = adjustedScore;
+  score = contributorResult.score;
 
-  if (multiplier > 1.0) {
+  // Collaborators are fully skipped
+  if (contributorResult.options.isCollaborator) {
+    core.info(`PR #${ctx.number}: "${author}" is a collaborator — skipping.`);
+    return;
+  }
+
+  if (contributorResult.multiplier > 1.0 && contributorResult.multiplier < 99) {
     core.info(
-      `PR #${ctx.number}: contributor "${author}" has ${mergedCount} merged PRs — score multiplied by ${multiplier}`,
+      `PR #${ctx.number}: contributor "${author}" — score multiplied by ${contributorResult.multiplier}`,
     );
   }
 
   core.info(`PR #${ctx.number}: score=${score.total}, verdict=${score.verdict}, signals=${score.signals.length}`);
-  await dispatchActions(score, ctx, { contributorMultiplier: multiplier, mergedPrCount: mergedCount, isReanalysis });
+  await dispatchActions(score, ctx, {
+    contributorMultiplier: contributorResult.multiplier,
+    mergedPrCount: contributorResult.mergedCount,
+    isReanalysis,
+    ...contributorResult.options,
+  });
 }
 
 async function handleIssue(
